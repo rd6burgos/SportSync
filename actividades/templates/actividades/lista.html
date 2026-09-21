@@ -1,0 +1,24 @@
+{% extends 'core/base.html' %} <!-- Asumiendo que tienes un base.html en core o usuarios -->
+
+{% block content %}
+<h1>Actividades Deportivas</h1>
+
+<!-- Botón solo visible para organizadores -->
+{% if user.is_authenticated and user.rol == 'organizador' %}
+    <a href="{% url 'actividades:crear' %}" class="btn btn-primary">Crear Nueva Actividad</a>
+{% endif %}
+
+<div class="lista-actividades">
+    {% for actividad in actividades %}
+        <div class="card">
+            <h3>{{ actividad.nombre }}</h3>
+            <p><strong>Deporte:</strong> {{ actividad.deporte }}</p>
+            <p><strong>Fecha:</strong> {{ actividad.fecha }} a las {{ actividad.hora }}</p>
+            <p><strong>Lugar:</strong> {{ actividad.lugar }}</p>
+            <a href="{% url 'actividades:detalle' actividad.pk %}">Ver detalles</a>
+        </div>
+    {% empty %}
+        <p>No hay actividades publicadas actualmente.</p>
+    {% endfor %}
+</div>
+{% endblock %}

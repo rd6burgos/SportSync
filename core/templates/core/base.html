@@ -3,92 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SportSync - {% block title %}Inicio{% endblock %}</title>
+    
+    <!-- 1. Bootstrap (Estructura y componentes) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- 2. Tailwind CSS (Estilos bonitos) Configurado para NO pelear con Bootstrap -->
+    <script>
+        tailwind = {
+            config: {
+                corePlugins: {
+                    preflight: false, // Esto desactiva el reseteo de estilos de Tailwind
+                }
+            }
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
 
-    <title>{% block titulo %}SportSync{% endblock %}</title>
-
-    <!-- Tailwind para desarrollo local -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar-brand { font-weight: bold; color: #0d6efd !important; }
+        .card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; }
+        .btn-primary { background-color: #0d6efd; border: none; }
+    </style>
+    {% block extra_css %}{% endblock %}
 </head>
+<body>
 
-<body class="flex min-h-screen flex-col bg-[#0086b5] font-sans text-white">
-
-    <!-- Encabezado -->
-    <header class="border-b border-white/20">
-        <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-6">
-
-            <!-- Nombre del proyecto -->
-            <a href="{% url 'inicio' %}"
-               class="text-3xl font-black tracking-tight text-[#eff77a] sm:text-4xl">
-                SportSync
-            </a>
-
-            <!-- Acceso de usuarios -->
-            <div class="flex flex-wrap items-center gap-3">
-                {% if user.is_authenticated %}
-                           <span class="text-sm font-semibold">
-                               Hola, {{ user.first_name|default:user.email }}
-                              ·  {{ user.get_rol_display }}
-                            </span>
-
-                            {% if user.rol == "administrador" %}
-    <a href="{% url 'usuarios:panel_administrador' %}"
-       class="rounded-full bg-[#eff77a] px-5 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-[#e2ec59]">
-        Mi panel
-    </a>
-{% elif user.rol == "organizador" %}
-    <a href="{% url 'usuarios:panel_organizador' %}"
-       class="rounded-full bg-[#eff77a] px-5 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-[#e2ec59]">
-        Mi panel
-    </a>
-{% elif user.rol == "participante" %}
-    <a href="{% url 'usuarios:panel_participante' %}"
-       class="rounded-full bg-[#eff77a] px-5 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-[#e2ec59]">
-        Mi panel
-    </a>
-{% endif %}
-
-                           <form method="post" action="{% url 'usuarios:logout' %}">
-                           {% csrf_token %}
-                              <button type="submit"
-
-                                class="rounded-full border border-white/60 px-5 py-2.5 text-sm font-bold transition hover:bg-white/10">
-                            Cerrar sesión
-                        </button>
-                    </form>
-                {% else %}
-                    <a href="{% url 'usuarios:login' %}"
-                       class="rounded-full border border-white/60 px-5 py-2.5 text-sm font-bold transition hover:bg-white/10">
-                        Iniciar sesión
-                    </a>
-
-                    <a href="{% url 'usuarios:registro' %}"
-                       class="rounded-full bg-[#eff77a] px-5 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-[#e2ec59]">
-                        Registrarse
-                    </a>
-                {% endif %}
+    <!-- Barra de Navegación -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'core:inicio' %}">🏆 SportSync</a>
+            
+            <!-- Botón hamburguesa para móviles -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if user.is_authenticated %}
+                        <!-- Menú para usuarios logueados -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'actividades:lista' %}">Actividades</a>
+                        </li>
+                        
+                        {% if user.rol == 'organizador' or user.rol == 'administrador' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'actividades:crear' %}">Crear Actividad</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% if user.rol == 'administrador' %}
+                        <li class="nav-item">
+                            <a class="nav-link text-danger" href="{% url 'usuarios:panel_administrador' %}">Panel Admin</a>
+                        </li>
+                        {% endif %}
+                        
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                {{ user.email }} ({{ user.get_rol_display }})
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'usuarios:panel_participante' %}">Mi Panel</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form action="{% url 'usuarios:logout' %}" method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-danger">Cerrar Sesión</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <!-- Menú para visitantes (LO QUE FALTABA) -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'usuarios:login' %}">Iniciar Sesión</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'usuarios:registro' %}">Registrarse</a>
+                        </li>
+                    {% endif %}
+                </ul>
             </div>
-
         </div>
-    </header>
+    </nav>
 
-    <main class="flex-1">
-        {% block contenido %}
+    <!-- Contenido Principal -->
+    <div class="container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}
+        <!-- Aquí se inyectará el contenido de cada vista -->
         {% endblock %}
-    </main>
+    </div>
 
-    <footer class="border-t border-white/20">
-        <div class="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-6 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <p>&copy; {% now "Y" %} SportSync.</p>
-
-            <a href="{% url 'acerca' %}"
-               class="underline underline-offset-4 hover:text-[#eff77a]">
-                Acerca del proyecto
-
-            </a>
-
-            <p>Proyecto académico de Desarrollo de Software V.</p>
-        </div>
+    <!-- Footer -->
+    <footer class="text-center py-4 mt-5 text-muted">
+        <small>&copy; 2026 SportSync - Proyecto Parcial 1</small>
     </footer>
 
+    <!-- Bootstrap JS (Necesario para el menú desplegable y alertas) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>{{ actividad.nombre }}</h1>
+<p><strong>Estado:</strong> {{ actividad.get_estado_display }}</p>
+<p>{{ actividad.descripcion }}</p>
+<p><strong>Cupos:</strong> {{ cupos_disponibles }} disponibles</p>
+
+{% if esta_llena %}
+    <p style="color: red;">¡Cupo Lleno!</p>
+{% else %}
+    <button class="btn btn-primary">Inscribirme</button> <!-- Pendiente de lógica -->
+{% endif %}
+
+<a href="{% url 'actividades:lista' %}">Volver a la lista</a>
+{% endblock %}

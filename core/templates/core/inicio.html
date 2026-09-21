@@ -1,140 +1,147 @@
 {% extends "core/base.html" %}
-{% load static %}
 
-{% block titulo %}Inicio | SportSync{% endblock %}
+{% block title %}Inicio - SportSync{% endblock %}
 
-{% block contenido %}
+{% block extra_css %}
+<style>
+    /* Estilos personalizados para la página de inicio */
+    .hero-section {
+        background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+                    url('https://images.unsplash.com/photo-1461896836934-ffe607ba8211?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+        background-size: cover;
+        background-position: center;
+        height: 80vh; /* Ocupa el 80% de la altura de la pantalla */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        text-align: center;
+        border-radius: 0 0 20px 20px;
+        margin-bottom: 3rem;
+    }
 
-<!-- Portada: imagen a la izquierda y título a la derecha -->
-<section class="mx-auto grid max-w-7xl items-center gap-8 px-6 py-10 md:grid-cols-2 md:gap-12 md:py-16">
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        margin-bottom: 1rem;
+    }
 
-    <div class="h-80 overflow-hidden bg-[#0077a3] sm:h-[440px] md:h-[560px]">
-        <!-- IMAGEN 1: deportista principal -->
-        <!-- Cambia core/img/portada.png por la ruta de tu imagen -->
-        <img
-            src="{% static 'core/img/Four Goal Frenzy.jpe' %}"
-            alt="Deportista entrenando con un balón"
-            class="h-full w-full object-contain"
-        >
+    .hero-subtitle {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+        font-weight: 300;
+    }
+
+    .btn-hero {
+        padding: 12px 30px;
+        font-size: 1.2rem;
+        border-radius: 50px;
+        margin: 0 10px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .btn-hero:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+
+    .feature-card {
+        transition: transform 0.3s;
+        border: none;
+        border-radius: 15px;
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+    }
+
+    .feature-img {
+        height: 200px;
+        object-fit: cover;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Sección Hero (Principal) -->
+<div class="hero-section">
+    <div class="container">
+        <h1 class="hero-title">🏆 SportSync</h1>
+        <p class="hero-subtitle">Gestiona, organiza y participa en torneos deportivos como nunca antes.</p>
+        
+        {% if user.is_authenticated %}
+            <!-- Si el usuario ya está logueado -->
+            <div>
+                <h3>¡Bienvenido de nuevo, {{ user.email }}!</h3>
+                <a href="{% url 'actividades:lista' %}" class="btn btn-primary btn-hero mt-3">
+                    Ver Actividades Disponibles
+                </a>
+                {% if user.rol == 'organizador' or user.rol == 'administrador' %}
+                    <a href="{% url 'actividades:crear' %}" class="btn btn-success btn-hero mt-3">
+                        Crear Nueva Actividad
+                    </a>
+                {% endif %}
+            </div>
+        {% else %}
+            <!-- Si el usuario NO está logueado (Botones funcionales) -->
+            <div>
+                <a href="{% url 'usuarios:registro' %}" class="btn btn-primary btn-hero">
+                    📝 Registrarse Ahora
+                </a>
+                <a href="{% url 'usuarios:login' %}" class="btn btn-outline-light btn-hero">
+                    🔑 Iniciar Sesión
+                </a>
+            </div>
+        {% endif %}
     </div>
+</div>
 
-    <div>
-        <h1 class="text-5xl font-black uppercase leading-[0.95] tracking-tight text-[#eff77a] sm:text-7xl lg:text-8xl">
-            Entrena.<br>
-            Juega.<br>
-            Conecta.
-        </h1>
-
-        <p class="mt-8 max-w-lg text-lg leading-relaxed">
-            Descubre actividades, participa en torneos y conecta
-            con otras personas que comparten tu pasión por el deporte.
-        </p>
-
-        <a href="#descubre"
-           class="mt-8 inline-flex rounded-full bg-white px-7 py-3 text-sm font-extrabold uppercase text-[#00658a] transition hover:bg-[#eff77a]">
-            Descubre SportSync
-        </a>
-    </div>
-
-</section>
-
-<!-- Tarjetas informativas -->
-<section id="descubre" class="border-t border-white/20">
-    <div class="mx-auto max-w-7xl px-6 py-12 md:py-16">
-
-        <h2 class="text-4xl font-black uppercase leading-tight tracking-tight text-[#eff77a] sm:text-5xl lg:text-6xl">
-            El deporte nos conecta
-        </h2>
-
-        <p class="mt-4 max-w-2xl text-lg leading-relaxed">
-            Encuentra tu próxima actividad y forma parte de SportSync.
-        </p>
-
-        <div class="mt-10 grid gap-6 md:grid-cols-3">
-
-            <!-- Tarjeta 1 -->
-            <article class="overflow-hidden bg-[#eff77a] text-slate-900">
-
-                <div class="h-56 bg-[#0077a3]">
-                    <!-- IMAGEN 2: actividad deportiva -->
-                    <img
-                        src="{% static 'core/img/practica.jpe' %}"
-                        alt="Persona practicando deporte al aire libre"
-                        class="h-full w-full object-cover"
-                        loading="lazy"
-                    >
-                </div>
-
-                <div class="p-6">
-                    <h3 class="text-2xl font-extrabold uppercase text-[#00658a]">
-                        Descubre
-                    </h3>
-
-                    <p class="mt-4 leading-relaxed">
-                        Encuentra actividades deportivas según el deporte,
-                        la fecha y la ubicación. Descubre nuevas
-                        oportunidades para mantenerte activo.
-                    </p>
-                </div>
-
-            </article>
-
-            <!-- Tarjeta 2 -->
-            <article class="overflow-hidden bg-[#eff77a] text-slate-900">
-
-                <div class="h-56 bg-[#0077a3]">
-                    <!-- IMAGEN 3: participantes o torneo -->
-                    <img
-                        src="{% static 'core/img/grupo.jpe' %}"
-                        alt="Deportistas participando en una actividad"
-                        class="h-full w-full object-cover"
-                        loading="lazy"
-                    >
-                </div>
-
-                <div class="p-6">
-                    <h3 class="text-2xl font-extrabold uppercase text-[#00658a]">
-                        Participa
-                    </h3>
-
-                    <p class="mt-4 leading-relaxed">
-                        Regístrate e inscríbete en las actividades
-                        disponibles que más te interesen. Comparte
-                        tu pasión por el deporte con otros participantes.
-                    </p>
-                </div>
-
-            </article>
-
-            <!-- Tarjeta 3 -->
-            <article class="overflow-hidden bg-[#eff77a] text-slate-900">
-
-                <div class="h-56 bg-[#0077a3]">
-                    <!-- IMAGEN 4: comunidad deportiva -->
-                    <img
-                        src="{% static 'core/img/download (1).jpe' %}"
-                        alt="Grupo de deportistas reunidos"
-                        class="h-full w-full object-cover"
-                        loading="lazy"
-                    >
-                </div>
-
-                <div class="p-6">
-                    <h3 class="text-2xl font-extrabold uppercase text-[#00658a]">
-                        Organiza
-                    </h3>
-
-                    <p class="mt-4 leading-relaxed">
-                        Solicita convertirte en Organizador y, una vez
-                        aprobado, crea tus propias actividades deportivas.
-                        Ayuda a construir una comunidad activa.
-                    </p>
-                </div>
-
-            </article>
-
+<!-- Sección de Características -->
+<div class="container mb-5">
+    <div class="row text-center mb-5">
+        <div class="col-12">
+            <h2 class="fw-bold">¿Por qué usar SportSync?</h2>
+            <p class="text-muted">La plataforma todo-en-uno para deportistas amateur</p>
         </div>
     </div>
-</section>
 
+    <div class="row g-4">
+        <!-- Característica 1 -->
+        <div class="col-md-4">
+            <div class="card feature-card">
+                <img src="https://images.unsplash.com/photo-1526676037777-05a232554f77?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" class="card-img-top feature-img" alt="Organización">
+                <div class="card-body">
+                    <h5 class="card-title fw-bold">📅 Organización Fácil</h5>
+                    <p class="card-text">Crea torneos y partidos en segundos. Define fechas, lugares y cupos máximos sin complicaciones.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Característica 2 -->
+        <div class="col-md-4">
+            <div class="card feature-card">
+                <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" class="card-img-top feature-img" alt="Inscripciones">
+                <div class="card-body">
+                    <h5 class="card-title fw-bold">🎫 Inscripciones al Instante</h5>
+                    <p class="card-text">Participantes pueden unirse con un clic. Control automático de lista de espera si se llena el cupo.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Característica 3 -->
+        <div class="col-md-4">
+            <div class="card feature-card">
+                <img src="https://images.unsplash.com/photo-1560272564-c83b66b1ad12?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" class="card-img-top feature-img" alt="Control QR">
+                <div class="card-body">
+                    <h5 class="card-title fw-bold">📱 Control con QR</h5>
+                    <p class="card-text">Valida la asistencia escaneando códigos QR únicos. Adiós a las listas en papel.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
