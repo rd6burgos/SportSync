@@ -1,39 +1,47 @@
 {% extends "core/base.html" %}
 
-{% block title %}Iniciar sesión | SportSync{% endblock %}
+{% block titulo %}Iniciar sesión | SportSync{% endblock %}
 
-{% block content %}
+{% block contenido %}
 <section class="mx-auto max-w-md px-6 py-16">
     <div class="rounded-2xl bg-white p-8 text-slate-900 shadow-lg">
+
         <h1 class="text-3xl font-extrabold">Iniciar sesión</h1>
         <p class="mt-2 text-slate-600">Accede a tu cuenta de SportSync.</p>
 
         {% if form.errors %}
-        <div class="alert alert-danger mt-4">
-            Correo o contraseña incorrectos. Inténtalo de nuevo.
-        </div>
+        <p class="mt-4 rounded-lg bg-red-100 px-4 py-3 text-sm text-red-700">
+           Correo o contraseña incorrectos. Inténtalo de nuevo.
+        </p>
         {% endif %}
 
         <form method="post" class="mt-6 space-y-5">
             {% csrf_token %}
-            <!-- El campo 'next' redirige al usuario a donde iba antes de loguearse -->
             <input type="hidden" name="next" value="{{ next }}">
 
             <div>
-                <label for="id_username" class="block text-sm font-semibold">Correo electrónico</label>
-                <input type="email" name="username" id="id_username" 
-                       value="{{ form.username.value|default_if_none:'' }}" 
-                       autocomplete="username" required autofocus
-                       class="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:border-[#0086b5] focus:outline-none">
-            </div>
-            
+    <label for="id_username" class="block text-sm font-semibold">
+        Correo electrónico
+    </label>
+
+    <input type="email"
+           name="username"
+           id="id_username"
+           value="{{ form.username.value|default_if_none:'' }}"
+           autocomplete="username"
+           required
+           autofocus
+           class="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:border-[#0086b5] focus:outline-none">
+</div>
             <div>
                 <label for="id_password" class="block text-sm font-semibold">Contraseña</label>
                 <input type="password" name="password" id="id_password" required
                        class="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:border-[#0086b5] focus:outline-none">
             </div>
 
-            <button type="submit" class="w-full rounded-full bg-[#eff77a] px-5 py-3 font-bold text-slate-900 transition hover:bg-[#e2ec59]">
+
+            <button type="submit"
+                    class="w-full rounded-full bg-[#eff77a] px-5 py-3 font-bold text-slate-900 transition hover:bg-[#e2ec59]">
                 Entrar
             </button>
         </form>
