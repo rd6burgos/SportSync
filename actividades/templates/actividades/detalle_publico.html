@@ -1,0 +1,95 @@
+{% extends "core/base.html" %}
+
+{% block titulo %}{{ actividad.nombre }} | SportSync{% endblock %}
+
+{% block contenido %}
+<section class="mx-auto max-w-4xl px-6 py-12">
+    <article class="rounded-2xl bg-white p-6 text-slate-900 shadow-lg sm:p-8">
+
+        <a href="{% url 'actividades:calendario_publico' %}?{{ consulta_calendario }}"
+           class="font-semibold text-blue-700 hover:underline">
+            ← Volver al calendario
+        </a>
+
+        <div class="mt-6">
+            <span class="inline-block rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800">
+                {{ actividad.get_estado_display }}
+            </span>
+
+            <h1 class="mt-4 break-words text-3xl font-bold">
+                {{ actividad.nombre }}
+            </h1>
+        </div>
+
+        <section class="mt-6">
+            <h2 class="text-xl font-semibold">Descripción</h2>
+
+            <div class="mt-3 break-words leading-relaxed text-slate-700">
+                {{ actividad.descripcion|linebreaksbr }}
+            </div>
+        </section>
+
+        <dl class="mt-8 grid gap-5 rounded-xl bg-slate-50 p-5 sm:grid-cols-2">
+            <div>
+                <dt class="font-bold">Tipo</dt>
+                <dd class="mt-1">{{ actividad.get_tipo_display }}</dd>
+            </div>
+
+            <div>
+                <dt class="font-bold">Deporte</dt>
+                <dd class="mt-1 break-words">{{ actividad.deporte }}</dd>
+            </div>
+
+            <div class="sm:col-span-2">
+                <dt class="font-bold">Ubicación</dt>
+                <dd class="mt-1 break-words">{{ actividad.ubicacion }}</dd>
+            </div>
+
+            <div>
+                <dt class="font-bold">Inicio</dt>
+                <dd class="mt-1">
+                    {{ actividad.fecha_inicio|date:"d/m/Y H:i" }}
+                </dd>
+            </div>
+
+            <div>
+                <dt class="font-bold">Finalización</dt>
+                <dd class="mt-1">
+                    {{ actividad.fecha_fin|date:"d/m/Y H:i" }}
+                </dd>
+            </div>
+
+            <div>
+                <dt class="font-bold">Cupo máximo</dt>
+                <dd class="mt-1">{{ actividad.cupo_maximo }}</dd>
+            </div>
+
+            <div>
+                <dt class="font-bold">Costo de inscripción</dt>
+                <dd class="mt-1">
+                    {% if actividad.costo == 0 %}
+                        Gratuita
+                    {% else %}
+                        ${{ actividad.costo|floatformat:2 }}
+                    {% endif %}
+                </dd>
+            </div>
+        </dl>
+
+        {% if actividad.estado == "inscripcion_cerrada" %}
+            <p class="mt-6 rounded-lg bg-amber-50 p-4 text-amber-900">
+                Las inscripciones de esta actividad están cerradas.
+            </p>
+        {% elif actividad.estado == "en_curso" %}
+            <p class="mt-6 rounded-lg bg-blue-50 p-4 text-blue-900">
+                Esta actividad está en curso.
+            </p>
+        {% elif actividad.estado == "finalizada" %}
+            <p class="mt-6 rounded-lg bg-slate-100 p-4 text-slate-700">
+                Esta actividad ha finalizado. Puedes consultar su información
+                como parte del historial.
+            </p>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}
