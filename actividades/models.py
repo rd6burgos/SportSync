@@ -4,26 +4,13 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 
 class Actividad(models.Model):
-
-
-
     class Tipo(models.TextChoices):
         ACTIVIDAD = "actividad", "Actividad deportiva"
         TORNEO = "torneo", "Torneo individual"
-
-
-
-
-
-
-
-
-
-
-
 
     class Estado(models.TextChoices):
         BORRADOR = "borrador", "Borrador"
@@ -34,7 +21,11 @@ class Actividad(models.Model):
         CANCELADA = "cancelada", "Cancelada"
 
     nombre = models.CharField(max_length=150)
-    descripcion = models.TextField("descripción", max_length=3000)
+
+    descripcion = models.TextField(
+        "descripción",
+        max_length=3000,
+    )
 
     tipo = models.CharField(
         max_length=20,
@@ -43,10 +34,19 @@ class Actividad(models.Model):
     )
 
     deporte = models.CharField(max_length=100)
-    ubicacion = models.CharField("ubicación", max_length=250)
 
-    fecha_inicio = models.DateTimeField("fecha y hora de inicio")
-    fecha_fin = models.DateTimeField("fecha y hora de finalización")
+    ubicacion = models.CharField(
+        "ubicación",
+        max_length=250,
+    )
+
+    fecha_inicio = models.DateTimeField(
+        "fecha y hora de inicio",
+    )
+
+    fecha_fin = models.DateTimeField(
+        "fecha y hora de finalización",
+    )
 
     cupo_maximo = models.PositiveIntegerField(
         "cupo máximo",
@@ -75,23 +75,11 @@ class Actividad(models.Model):
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     class Meta:
         ordering = ["-fecha_creacion"]
         verbose_name = "actividad"
         verbose_name_plural = "actividades"
+
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(cupo_maximo__gte=1),
@@ -102,7 +90,9 @@ class Actividad(models.Model):
                 name="actividad_costo_no_negativo",
             ),
             models.CheckConstraint(
-                condition=models.Q(fecha_fin__gt=models.F("fecha_inicio")),
+                condition=models.Q(
+                    fecha_fin__gt=models.F("fecha_inicio")
+                ),
                 name="actividad_fin_posterior_inicio",
             ),
         ]
@@ -120,3 +110,55 @@ class Actividad(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    def transiciones_permitidas(self):
+        transiciones = {
+            self.Estado.BORRADOR: (
+                self.Estado.PUBLICADA,
+                self.Estado.CANCELADA,
+            ),
+            self.Estado.PUBLICADA: (
+                self.Estado.INSCRIPCION_CERRADA,
+                self.Estado.CANCELADA,
+            ),
+            self.Estado.INSCRIPCION_CERRADA: (
+                self.Estado.EN_CURSO,
+                self.Estado.CANCELADA,
+            ),
+            self.Estado.EN_CURSO: (
+                self.Estado.FINALIZADA,
+                self.Estado.CANCELADA,
+            ),
+            self.Estado.FINALIZADA: (),
+            self.Estado.CANCELADA: (),
+        }
+
+        return transiciones.get(self.estado, ())
+
+    def cambiar_estado(self, nuevo_estado):
+        if nuevo_estado not in self.transiciones_permitidas():
+            raise ValidationError(
+                "No se permite ese cambio de estado."
+            )
+
+        if nuevo_estado == self.Estado.PUBLICADA:
+            self.full_clean()
+
+            if self.fecha_inicio <= timezone.now():
+                raise ValidationError(
+                    "Para publicar, la fecha de inicio debe ser futura."
+                )
+
+        actualizadas = type(self).objects.filter(
+            pk=self.pk,
+            estado=self.estado,
+        ).update(
+            estado=nuevo_estado,
+        )
+
+        if actualizadas == 0:
+            raise ValidationError(
+                "La actividad cambió. Recarga la página e inténtalo de nuevo."
+            )
+
+        self.estado = nuevo_estado

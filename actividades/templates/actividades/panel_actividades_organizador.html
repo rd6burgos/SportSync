@@ -3,6 +3,18 @@
 {% block titulo %}Mis actividades | SportSync{% endblock %}
 
 {% block contenido %}
+
+{% if messages %}
+    <div class="mx-auto max-w-5xl px-6 pt-6">
+        {% for message in messages %}
+            <div role="alert"
+                 class="mb-3 rounded-lg bg-white p-4 text-slate-900 shadow">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
 <section class="mx-auto max-w-5xl px-6 py-12">
     <div class="rounded-2xl bg-white p-8 text-slate-900 shadow-lg">
 
@@ -70,6 +82,36 @@
         Editar
     </a>
 {% endif %}
+<div class="mt-4 flex flex-wrap gap-3">
+    {% for estado in actividad.transiciones_permitidas %}
+        <form method="post"
+              action="{% url 'actividades:cambiar_estado_actividad' actividad.id %}">
+            {% csrf_token %}
+
+            <input type="hidden" name="estado" value="{{ estado }}">
+
+            <button type="submit"
+                    class="rounded-lg px-5 py-3 font-semibold text-white
+                           {% if estado == 'cancelada' %}
+                               bg-red-700 hover:bg-red-800
+                           {% else %}
+                               bg-green-700 hover:bg-green-800
+                           {% endif %}">
+                {% if estado == "publicada" %}
+                    Publicar
+                {% elif estado == "inscripcion_cerrada" %}
+                    Cerrar inscripciones
+                {% elif estado == "en_curso" %}
+                    Iniciar actividad
+                {% elif estado == "finalizada" %}
+                    Finalizar actividad
+                {% elif estado == "cancelada" %}
+                    Cancelar actividad
+                {% endif %}
+            </button>
+        </form>
+    {% endfor %}
+</div>
             </article>
         {% empty %}
             <p class="rounded-lg bg-slate-100 p-5 text-slate-600">
