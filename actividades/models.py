@@ -141,12 +141,28 @@ class Actividad(models.Model):
                 "No se permite ese cambio de estado."
             )
 
+        ahora = timezone.now()
+
         if nuevo_estado == self.Estado.PUBLICADA:
             self.full_clean()
 
-            if self.fecha_inicio <= timezone.now():
+            if self.fecha_inicio <= ahora:
                 raise ValidationError(
                     "Para publicar, la fecha de inicio debe ser futura."
+                )
+
+        if nuevo_estado == self.Estado.EN_CURSO:
+            if ahora < self.fecha_inicio:
+                raise ValidationError(
+                    "No puedes iniciar la actividad antes "
+                    "de su fecha y hora de inicio."
+                )
+
+        if nuevo_estado == self.Estado.FINALIZADA:
+            if ahora < self.fecha_fin:
+                raise ValidationError(
+                    "No puedes finalizar la actividad antes "
+                    "de su fecha y hora de finalización."
                 )
 
         actualizadas = type(self).objects.filter(

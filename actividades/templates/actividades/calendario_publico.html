@@ -1,0 +1,218 @@
+{% extends "core/base.html" %}
+
+{% block titulo %}Calendario público | SportSync{% endblock %}
+
+{% block contenido %}
+<section class="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <div class="rounded-2xl bg-white p-5 text-slate-900 shadow-lg sm:p-8">
+
+        <h1 class="text-3xl font-bold">Calendario de actividades</h1>
+
+        <p class="mt-3 text-slate-600">
+            Descubre actividades deportivas y torneos.
+            Consulta sus fechas, ubicación y estado.
+        </p>
+
+        <form method="get"
+              action="{% url 'actividades:calendario_publico' %}"
+              class="mt-6 grid gap-4 rounded-xl bg-slate-50 p-5 sm:grid-cols-2 lg:grid-cols-5">
+
+            <div>
+                <label for="mes" class="mb-2 block font-semibold">
+                    Mes
+                </label>
+
+                <select id="mes" name="mes"
+                        class="w-full rounded-lg border border-slate-300 bg-white p-3">
+                    {% for numero, nombre in meses %}
+                        <option value="{{ numero }}"
+                                {% if numero == mes %}selected{% endif %}>
+                            {{ nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="anio" class="mb-2 block font-semibold">
+                    Año
+                </label>
+
+                <input id="anio" name="anio" type="number"
+                       min="1901" max="2099" required
+                       value="{{ anio }}"
+                       class="w-full rounded-lg border border-slate-300 bg-white p-3">
+            </div>
+
+            <div>
+                <label for="deporte" class="mb-2 block font-semibold">
+                    Deporte
+                </label>
+
+                <input id="deporte" name="deporte" type="text"
+                       maxlength="100"
+                       value="{{ filtros.deporte }}"
+                       placeholder="Ejemplo: fútbol"
+                       class="w-full rounded-lg border border-slate-300 bg-white p-3">
+            </div>
+
+            <div>
+                <label for="ubicacion" class="mb-2 block font-semibold">
+                    Ubicación
+                </label>
+
+                <input id="ubicacion" name="ubicacion" type="text"
+                       maxlength="250"
+                       value="{{ filtros.ubicacion }}"
+                       placeholder="Ejemplo: David"
+                       class="w-full rounded-lg border border-slate-300 bg-white p-3">
+            </div>
+
+            <div>
+                <label for="tipo" class="mb-2 block font-semibold">
+                    Tipo
+                </label>
+
+                <select id="tipo" name="tipo"
+                        class="w-full rounded-lg border border-slate-300 bg-white p-3">
+                    <option value="">Todos</option>
+
+                    {% for valor, etiqueta in tipos %}
+                        <option value="{{ valor }}"
+                                {% if filtros.tipo == valor %}selected{% endif %}>
+                            {{ etiqueta }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-5">
+                <button type="submit"
+                        class="rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800">
+                    Aplicar filtros
+                </button>
+
+                <a href="{% url 'actividades:calendario_publico' %}?{{ consulta_limpiar }}"
+                   class="rounded-lg border border-slate-300 bg-white px-5 py-3 font-semibold hover:bg-slate-100">
+                    Limpiar filtros
+                </a>
+            </div>
+        </form>
+
+        <div class="my-6 flex flex-wrap items-center justify-between gap-4">
+            <h2 class="text-2xl font-bold">
+                {{ nombre_mes }} {{ anio }}
+            </h2>
+
+            <nav aria-label="Navegación entre meses"
+                 class="flex flex-wrap gap-2">
+
+                {% if consulta_anterior %}
+                    <a href="{% url 'actividades:calendario_publico' %}?{{ consulta_anterior }}"
+                       class="rounded-lg border border-slate-300 px-4 py-2 hover:bg-slate-100">
+                        ← Anterior
+                    </a>
+                {% endif %}
+
+                <a href="{% url 'actividades:calendario_publico' %}?{{ consulta_hoy }}"
+                   class="rounded-lg bg-blue-700 px-4 py-2 text-white hover:bg-blue-800">
+                    Mes actual
+                </a>
+
+                {% if consulta_siguiente %}
+                    <a href="{% url 'actividades:calendario_publico' %}?{{ consulta_siguiente }}"
+                       class="rounded-lg border border-slate-300 px-4 py-2 hover:bg-slate-100">
+                        Siguiente →
+                    </a>
+                {% endif %}
+            </nav>
+        </div>
+
+        {% if not total_actividades %}
+            <p role="status"
+               class="mb-5 rounded-lg bg-amber-50 p-4 text-amber-900">
+                No hay actividades que coincidan con los filtros
+                en las fechas mostradas.
+            </p>
+        {% endif %}
+
+        <p class="mb-3 text-sm text-slate-500 sm:hidden">
+            Desliza horizontalmente para ver toda la semana.
+        </p>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200"
+             role="region"
+             aria-label="Calendario mensual"
+             tabindex="0">
+
+            <table class="w-full min-w-[900px] table-fixed border-collapse">
+                <caption class="sr-only">
+                    Calendario de {{ nombre_mes }} {{ anio }}
+                </caption>
+
+                <thead>
+                    <tr class="bg-slate-100">
+                        {% for nombre_dia in dias_semana %}
+                            <th scope="col"
+                                class="border border-slate-200 p-3 text-center text-sm">
+                                {{ nombre_dia }}
+                            </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for semana in semanas %}
+                        <tr>
+                            {% for dia in semana %}
+                                <td class="h-40 border border-slate-200 p-2 align-top
+                                           {% if not dia.es_mes_actual %}bg-slate-50{% endif %}">
+
+                                    <time datetime="{{ dia.fecha|date:'Y-m-d' }}"
+                                          class="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold
+                                                 {% if dia.es_hoy %}
+                                                     bg-blue-700 text-white
+                                                 {% elif dia.es_mes_actual %}
+                                                     text-slate-900
+                                                 {% else %}
+                                                     text-slate-400
+                                                 {% endif %}">
+                                        {{ dia.fecha.day }}
+                                    </time>
+
+                                    {% for evento in dia.eventos %}
+                                        <a href="{% url 'actividades:detalle_publico' evento.actividad.id %}"
+                                           class="mb-2 block break-words rounded-lg border border-blue-200 bg-blue-50 p-2 text-sm text-slate-900 hover:bg-blue-100">
+
+                                            <span class="block font-bold">
+                                                {{ evento.actividad.nombre }}
+                                            </span>
+
+                                            <span class="mt-1 block text-xs">
+                                                {% if evento.comienza %}
+                                                    {{ evento.actividad.fecha_inicio|date:"H:i" }}
+                                                {% else %}
+                                                    Continúa
+                                                {% endif %}
+                                                · {{ evento.actividad.deporte }}
+                                            </span>
+
+                                            <span class="mt-2 inline-block rounded bg-white px-2 py-1 text-xs font-semibold">
+                                                {{ evento.actividad.get_estado_display }}
+                                            </span>
+                                        </a>
+                                    {% endfor %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <p class="mt-4 text-sm text-slate-600">
+            Las actividades de varios días aparecen en cada día que ocupan.
+        </p>
+    </div>
+</section>
+{% endblock %}
