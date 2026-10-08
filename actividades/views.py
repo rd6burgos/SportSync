@@ -23,6 +23,8 @@ def panel_actividades_organizador(request):
     )
 
 
+
+
 @roles_permitidos(Usuario.Rol.ORGANIZADOR)
 @require_http_methods(["GET", "POST"])
 def crear_actividad(request):

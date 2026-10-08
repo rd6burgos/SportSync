@@ -21,15 +21,6 @@ class RegistroForm(UserCreationForm):
         required=True,
     )
 
-
-
-
-
-
-
-
-
-
     class Meta:
         model = Usuario
         fields = ("first_name", "email", "password1", "password2")
