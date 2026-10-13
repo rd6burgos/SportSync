@@ -75,6 +75,10 @@ class Usuario(AbstractUser):
         self.email = self.email.strip().lower()
         super().save(*args, **kwargs)
 
+    def nombre_publico(self):
+        # Nombre para mostrar a otros usuarios, sin exponer el correo completo.
+        return self.get_full_name().strip() or self.email.split("@")[0]
+
     def __str__(self):
         return self.email
 
@@ -153,6 +157,9 @@ class SolicitudOrganizador(models.Model):
                 name="una_solicitud_pendiente_por_usuario",
             ),
         ]
+
+    
+    
 
     def __str__(self):
         return (

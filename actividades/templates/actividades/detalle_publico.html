@@ -59,10 +59,21 @@
                 </dd>
             </div>
 
+
+
             <div>
-                <dt class="font-bold">Cupo máximo</dt>
-                <dd class="mt-1">{{ actividad.cupo_maximo }}</dd>
+                <dt class="font-bold">Autor</dt>
+                <dd class="mt-1 break-words">{{ actividad.organizador.nombre_publico }}</dd>
             </div>
+
+            <div>
+                <dt class="font-bold">Cupos disponibles</dt>
+                <dd class="mt-1 {% if disponibles == 0 %}font-semibold text-red-700{% endif %}">
+                    {{ disponibles }}/{{ actividad.cupo_maximo }}
+                </dd>
+            </div>
+
+
 
             <div>
                 <dt class="font-bold">Costo de inscripción</dt>
@@ -75,6 +86,51 @@
                 </dd>
             </div>
         </dl>
+
+        
+
+
+
+        
+        {% for mensaje in messages %}
+            <p class="mt-6 rounded-lg p-4 {% if mensaje.tags == 'error' %}bg-red-50 text-red-900{% else %}bg-green-50 text-green-900{% endif %}">
+                {{ mensaje }}
+            </p>
+        {% endfor %}
+
+        {% if accion == "disponible" %}
+            <form method="post" action="{% url 'inscripciones:inscribirse' actividad.pk %}" class="mt-6">
+                {% csrf_token %}
+                <button type="submit"
+                        class="rounded-full bg-blue-700 px-8 py-3 font-bold text-white transition hover:bg-blue-800">
+                    {% if actividad.costo == 0 %}Inscribirme{% else %}Pagar e inscribirme{% endif %}
+                </button>
+            </form>
+        {% elif accion == "anonimo" %}
+            <a href="{% url 'usuarios:login' %}?next={{ request.path|urlencode }}"
+               class="mt-6 inline-block rounded-full bg-blue-700 px-8 py-3 font-bold text-white transition hover:bg-blue-800">
+                Inicia sesión para inscribirte
+            </a>
+        {% elif accion == "inscrito" %}
+            <p class="mt-6 rounded-lg bg-green-50 p-4 font-semibold text-green-900">
+                Ya estás inscrito en esta actividad.
+            </p>
+        {% elif accion == "sin_cupo" %}
+            <p class="mt-6 rounded-lg bg-red-50 p-4 font-semibold text-red-900">
+                No quedan cupos disponibles.
+            </p>
+        {% elif accion == "organizador" %}
+            <p class="mt-6 rounded-lg bg-slate-100 p-4 text-slate-700">
+                Eres el organizador de esta actividad.
+            </p>
+        {% endif %}
+
+
+
+
+
+
+
 
         {% if actividad.estado == "inscripcion_cerrada" %}
             <p class="mt-6 rounded-lg bg-amber-50 p-4 text-amber-900">

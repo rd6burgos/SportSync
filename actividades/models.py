@@ -178,3 +178,9 @@ class Actividad(models.Model):
             )
 
         self.estado = nuevo_estado
+
+    def cupos_ocupados(self):
+        return self.inscripciones.filter(estado="confirmada").count()
+
+    def cupos_disponibles(self):
+        return max(self.cupo_maximo - self.cupos_ocupados(), 0)

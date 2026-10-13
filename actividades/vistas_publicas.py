@@ -53,6 +53,22 @@ def leer_entero(valor, predeterminado, minimo, maximo):
     return predeterminado
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @require_safe
 def calendario_publico(request):
     hoy = timezone.localdate()
@@ -240,6 +256,8 @@ def calendario_publico(request):
     )
 
 
+
+
 @require_safe
 def detalle_publico(request, actividad_id):
     actividad = get_object_or_404(
@@ -254,14 +272,46 @@ def detalle_publico(request, actividad_id):
         "mes": inicio_local.month,
     })
 
+    disponibles = actividad.cupos_disponibles()
+    inscripcion = None
+
+    if request.user.is_authenticated:
+        inscripcion = (
+            request.user.inscripciones
+            .filter(actividad=actividad)
+            .exclude(estado="cancelada")
+            .first()
+        )
+
+    # Qué debe ofrecer la página a este visitante.
+    if actividad.estado != Actividad.Estado.PUBLICADA:
+        accion = "cerrada"
+    elif not request.user.is_authenticated:
+        accion = "anonimo"
+    elif actividad.organizador_id == request.user.pk:
+        accion = "organizador"
+    elif inscripcion:
+        accion = "inscrito"
+    elif disponibles == 0:
+        accion = "sin_cupo"
+    else:
+        accion = "disponible"
+
     return render(
         request,
         "actividades/detalle_publico.html",
         {
             "actividad": actividad,
             "consulta_calendario": consulta_calendario,
+            "disponibles": disponibles,
+            "inscripcion": inscripcion,
+            "accion": accion,
         },
     )
+
+
+
+
 
 
 
