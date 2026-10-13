@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'core',
     'usuarios',
     'actividades',
+    'inscripciones',
 ]
 
 MIDDLEWARE = [
