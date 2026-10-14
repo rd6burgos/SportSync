@@ -1,4 +1,7 @@
 import segno
+from django.contrib.auth import get_user_model
+from .validaciones import motivo_de_rechazo
+
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -14,34 +17,34 @@ from .models import Inscripcion
 
 @login_required
 @require_POST
+@login_required
+@require_POST
+
 def inscribirse(request, actividad_id):
     inscripcion = None
 
     with transaction.atomic():
+        # Se bloquea primero al participante y luego la actividad (siempre en
+        # este orden). Así dos solicitudes simultáneas del mismo usuario no
+        # pueden saltarse la validación de duplicados y horarios.
+        participante = get_user_model().objects.select_for_update().get(
+            pk=request.user.pk
+        )
         actividad = get_object_or_404(
             Actividad.objects.select_for_update(),
             pk=actividad_id,
         )
 
-        error = None
+        error = motivo_de_rechazo(participante, actividad)
 
-        if actividad.estado != Actividad.Estado.PUBLICADA:
-            error = "Esta actividad no acepta inscripciones."
-        elif actividad.organizador == request.user:
-            error = "No puedes inscribirte en tu propia actividad."
-        elif Inscripcion.objects.filter(
-            participante=request.user,
-            actividad=actividad,
-        ).exclude(estado=Inscripcion.Estado.CANCELADA).exists():
-            error = "Ya estás inscrito en esta actividad."
-        elif actividad.cupos_disponibles() == 0:
+        if error is None and actividad.cupos_disponibles() == 0:
             error = "No quedan cupos disponibles."
 
         if error is None:
             try:
                 with transaction.atomic():
                     inscripcion = Inscripcion.objects.create(
-                        participante=request.user,
+                        participante=participante,
                         actividad=actividad,
                         estado=Inscripcion.Estado.CONFIRMADA,
                     )
