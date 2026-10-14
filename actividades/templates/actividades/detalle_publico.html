@@ -119,10 +119,20 @@
                class="mt-4 inline-block rounded-full bg-blue-700 px-8 py-3 font-bold text-white transition hover:bg-blue-800">
                 Ver mi QR
             </a>
-        {% elif accion == "sin_cupo" %}
-            <p class="mt-6 rounded-lg bg-red-50 p-4 font-semibold text-red-900">
-                No quedan cupos disponibles.
-            </p>
+      {% elif accion == "sin_cupo" %}
+            <!-- CAMBIO ETAPA 10: BOTÓN DE LISTA DE ESPERA CUANDO NO HAY CUPO -->
+            <div class="mt-6 flex flex-col items-start gap-3">
+                <p class="rounded-lg bg-amber-50 p-4 font-semibold text-amber-900">
+                    No quedan cupos disponibles para confirmación inmediata. Puedes unirte a la lista de espera.
+                </p>
+                <form method="post" action="{% url 'inscripciones:inscribirse' actividad.pk %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="rounded-full bg-amber-500 px-8 py-3 font-bold text-slate-900 transition hover:bg-amber-400">
+                        Unirse a la lista de espera
+                    </button>
+                </form>
+            </div>
         {% elif accion == "organizador" %}
             <p class="mt-6 rounded-lg bg-slate-100 p-4 text-slate-700">
                 Eres el organizador de esta actividad.
