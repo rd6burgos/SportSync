@@ -19,7 +19,6 @@ from .models import Inscripcion
 @require_POST
 @login_required
 @require_POST
-
 def inscribirse(request, actividad_id):
     inscripcion = None
 
@@ -37,25 +36,50 @@ def inscribirse(request, actividad_id):
 
         error = motivo_de_rechazo(participante, actividad)
 
-        if error is None and actividad.cupos_disponibles() == 0:
-            error = "No quedan cupos disponibles."
 
+
+        
         if error is None:
-            try:
-                with transaction.atomic():
-                    inscripcion = Inscripcion.objects.create(
-                        participante=participante,
-                        actividad=actividad,
-                        estado=Inscripcion.Estado.CONFIRMADA,
-                    )
-            except IntegrityError:
-                error = "Ya estás inscrito en esta actividad."
+         try:
+           with transaction.atomic():
+            # Comprobar si quedan cupos disponibles.
+            if actividad.cupos_disponibles() > 0:
+                estado_inscripcion = Inscripcion.Estado.CONFIRMADA
+            else:
+                estado_inscripcion = Inscripcion.Estado.LISTA_ESPERA
+
+            # Crear la inscripción con el estado correspondiente.
+            inscripcion = Inscripcion.objects.create(
+                participante=participante,
+                actividad=actividad,
+                estado=estado_inscripcion,
+            )
+
+         except IntegrityError:
+           error = "Ya estás inscrito en esta actividad."
+
+
+
+
 
     if error:
         messages.error(request, error)
         return redirect("actividades:detalle_publico", actividad_id=actividad_id)
 
     return redirect("inscripciones:detalle", inscripcion_id=inscripcion.pk)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @login_required
@@ -87,6 +111,17 @@ def detalle_inscripcion(request, inscripcion_id):
         "inscripciones/detalle.html",
         {"inscripcion": inscripcion, "qr_svg": qr_svg},
     )
+
+
+
+
+
+
+
+
+
+
+
 
 
 @login_required

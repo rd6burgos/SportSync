@@ -16,13 +16,35 @@
         <!-- Columna izquierda: estado y acciones -->
         <div class="flex flex-col gap-6">
             <div class="rounded-2xl bg-white p-6 text-slate-900 shadow-lg">
+                
                 {% if inscripcion.estado == "confirmada" %}
-                    <p class="text-lg font-bold">Se ha inscrito correctamente a la actividad</p>
+                  <p class="text-lg font-bold text-green-700">
+                 ¡Te has inscrito correctamente!
+                 </p>
+                  <p class="mt-2 text-sm text-slate-600">
+                  Tu cupo está confirmado. Presenta tu código QR al organizador para registrar tu asistencia.
+                  </p>
+
+                {% elif inscripcion.estado == "lista_espera" %}
+                  <p class="text-lg font-bold text-amber-700">
+                  Estás en la lista de espera
+                  </p>
+                   <p class="mt-2 text-sm text-slate-600">
+                     Actualmente no quedan cupos disponibles. Tu inscripción está registrada
+                     y deberás esperar a que se libere un cupo.
+                  </p>
+
                 {% elif inscripcion.estado == "cancelada" %}
-                    <p class="text-lg font-bold text-red-700">Esta inscripción fue cancelada</p>
-                {% else %}
-                    <p class="text-lg font-bold">{{ inscripcion.get_estado_display }}</p>
-                {% endif %}
+                  <p class="text-lg font-bold text-red-700">
+                   Esta inscripción ha sido cancelada
+                    </p>
+
+                  {% else %}
+                  <p class="text-lg font-bold">
+                   {{ inscripcion.get_estado_display }}
+                     </p>
+                    {% endif %}
+
 
                 <p class="mt-3 font-semibold">{{ inscripcion.actividad.nombre }}</p>
                 <p class="text-sm text-slate-600">
