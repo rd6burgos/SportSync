@@ -14,4 +14,5 @@ urlpatterns = [
     path(
   "calendario/", vistas_publicas.calendario_publico,name="calendario_publico", ),
     path( "<int:actividad_id>/detalle/",vistas_publicas.detalle_publico,name="detalle_publico",),
+        path("", vistas_publicas.catalogo, name="catalogo"),
 ]

@@ -1,0 +1,72 @@
+{% extends "core/base.html" %}
+
+{% block titulo %}Mi inscripción | SportSync{% endblock %}
+
+{% block contenido %}
+<section class="mx-auto max-w-5xl px-6 py-12">
+
+    {% for mensaje in messages %}
+        <p class="mb-6 rounded-lg p-4 {% if mensaje.tags == 'error' %}bg-red-50 text-red-900{% else %}bg-green-50 text-green-900{% endif %}">
+            {{ mensaje }}
+        </p>
+    {% endfor %}
+
+    <div class="grid gap-6 md:grid-cols-2">
+
+        <!-- Columna izquierda: estado y acciones -->
+        <div class="flex flex-col gap-6">
+            <div class="rounded-2xl bg-white p-6 text-slate-900 shadow-lg">
+                {% if inscripcion.estado == "confirmada" %}
+                    <p class="text-lg font-bold">Se ha inscrito correctamente a la actividad</p>
+                {% elif inscripcion.estado == "cancelada" %}
+                    <p class="text-lg font-bold text-red-700">Esta inscripción fue cancelada</p>
+                {% else %}
+                    <p class="text-lg font-bold">{{ inscripcion.get_estado_display }}</p>
+                {% endif %}
+
+                <p class="mt-3 font-semibold">{{ inscripcion.actividad.nombre }}</p>
+                <p class="text-sm text-slate-600">
+                    {{ inscripcion.actividad.fecha_inicio|date:"d/m/Y H:i" }}
+                    · {{ inscripcion.actividad.ubicacion }}
+                </p>
+            </div>
+
+
+            <a href="{% url 'actividades:catalogo' %}"
+               class="rounded-full bg-[#eff77a] px-8 py-3 text-center font-bold text-slate-900 transition hover:bg-[#e2ec59]">
+                ← Volver al menú
+            </a>
+
+            {% if inscripcion.estado != "cancelada" %}
+            <form method="post" action="{% url 'inscripciones:cancelar' inscripcion.pk %}"
+                  onsubmit="return confirm('¿Seguro que quieres cancelar tu inscripción?');">
+                {% csrf_token %}
+                <button type="submit"
+                        class="w-full rounded-full border border-white/70 px-8 py-3 font-bold transition hover:bg-white/10">
+                    Cancelar inscripción
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
+        <!-- Columna derecha: QR -->
+        <div class="rounded-2xl bg-white p-6 text-center text-slate-900 shadow-lg">
+            <h1 class="text-2xl font-bold">QR de asistencia</h1>
+
+            {% if qr_svg %}
+                <div class="mx-auto mt-4 w-full max-w-xs [&>svg]:h-auto [&>svg]:w-full">
+                    {{ qr_svg }}
+                </div>
+                <p class="mt-4 text-sm text-slate-600">
+                    Preséntalo al organizador para confirmar tu asistencia.
+                </p>
+            {% else %}
+                <p class="mt-6 text-slate-600">
+                    Esta inscripción no tiene un QR activo.
+
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

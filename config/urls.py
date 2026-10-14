@@ -31,5 +31,6 @@ urlpatterns = [
     path("usuarios/", include("usuarios.urls")),
     # agregar las rutas de la aplicación actividades
     path("actividades/", include("actividades.urls")),
+    path("inscripciones/", include("inscripciones.urls")),
 
 ]

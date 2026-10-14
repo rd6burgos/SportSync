@@ -1,0 +1,79 @@
+{% extends "core/base.html" %}
+
+{% block titulo %}Actividades | SportSync{% endblock %}
+
+{% block contenido %}
+<section class="mx-auto max-w-7xl px-6 py-10">
+
+    <h1 class="text-3xl font-bold">Actividades</h1>
+    <p class="mt-1 text-white/80">Elige una actividad para ver su detalle e inscribirte.</p>
+
+    <!-- Buscador -->
+    <form method="get" class="mt-6 flex flex-wrap gap-3">
+        <input type="search" name="q" value="{{ busqueda }}"
+               placeholder="Buscar por nombre, deporte o lugar"
+               class="min-w-0 flex-1 rounded-full bg-white px-5 py-3 text-slate-900 outline-none">
+        {% if deporte %}<input type="hidden" name="deporte" value="{{ deporte }}">{% endif %}
+        <button type="submit"
+                class="rounded-full bg-[#eff77a] px-6 py-3 font-bold text-slate-900 hover:bg-[#e2ec59]">
+            Buscar
+        </button>
+    </form>
+
+    <!-- Filtro por deporte -->
+    {% if deportes %}
+    <nav class="mt-4 flex flex-wrap gap-2" aria-label="Filtrar por deporte">
+        <a href="?{% if busqueda %}q={{ busqueda|urlencode }}{% endif %}"
+           class="rounded-full px-4 py-1.5 text-sm font-semibold {% if not deporte %}bg-[#eff77a] text-slate-900{% else %}border border-white/60 hover:bg-white/10{% endif %}">
+            Todos
+        </a>
+        {% for d in deportes %}
+        <a href="?deporte={{ d|urlencode }}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}"
+           class="rounded-full px-4 py-1.5 text-sm font-semibold {% if d|lower == deporte|lower %}bg-[#eff77a] text-slate-900{% else %}border border-white/60 hover:bg-white/10{% endif %}">
+
+            {{ d }}
+        </a>
+        {% endfor %}
+    </nav>
+    {% endif %}
+
+    <!-- Tarjetas agrupadas por deporte -->
+    {% for grupo in grupos %}
+    <h2 class="mt-10 text-2xl font-bold">{{ grupo.deporte }}</h2>
+
+    <div class="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {% for actividad in grupo.actividades %}
+        <a href="{% url 'actividades:detalle_publico' actividad.pk %}"
+           class="block overflow-hidden rounded-2xl bg-white text-slate-900 shadow-lg transition hover:-translate-y-1 hover:shadow-xl">
+
+            <div class="flex h-32 items-center justify-center bg-cyan-200 text-5xl font-black text-cyan-800">
+                {{ actividad.deporte|slice:":1"|upper }}
+            </div>
+
+            <div class="p-4">
+                <h3 class="break-words text-lg font-bold">{{ actividad.nombre }}</h3>
+                <p class="mt-1 text-sm text-slate-600">
+                    {{ actividad.fecha_inicio|date:"d/m/Y H:i" }} · {{ actividad.ubicacion }}
+                </p>
+
+                <div class="mt-3 flex items-center justify-between text-sm font-semibold">
+                    <span class="{% if actividad.disponibles == 0 %}text-red-700{% else %}text-green-700{% endif %}">
+                        {{ actividad.disponibles }}/{{ actividad.cupo_maximo }} cupos
+                    </span>
+                    <span>
+                        {% if actividad.costo == 0 %}Gratis{% else %}${{ actividad.costo|floatformat:2 }}{% endif %}
+                    </span>
+
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% empty %}
+    <p class="mt-10 rounded-xl bg-white/10 p-6">
+        No hay actividades publicadas que coincidan con tu búsqueda.
+    </p>
+    {% endfor %}
+
+</section>
+{% endblock %}

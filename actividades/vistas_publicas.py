@@ -1,3 +1,4 @@
+from django.db.models import Count, Q
 import calendar
 from datetime import date, datetime, time, timedelta
 from urllib.parse import urlencode
@@ -50,6 +51,22 @@ def leer_entero(valor, predeterminado, minimo, maximo):
         return numero
 
     return predeterminado
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @require_safe
@@ -239,6 +256,8 @@ def calendario_publico(request):
     )
 
 
+
+
 @require_safe
 def detalle_publico(request, actividad_id):
     actividad = get_object_or_404(
@@ -253,11 +272,108 @@ def detalle_publico(request, actividad_id):
         "mes": inicio_local.month,
     })
 
+    disponibles = actividad.cupos_disponibles()
+    inscripcion = None
+
+    if request.user.is_authenticated:
+        inscripcion = (
+            request.user.inscripciones
+            .filter(actividad=actividad)
+            .exclude(estado="cancelada")
+            .first()
+        )
+
+    # Qué debe ofrecer la página a este visitante.
+    if actividad.estado != Actividad.Estado.PUBLICADA:
+        accion = "cerrada"
+    elif not request.user.is_authenticated:
+        accion = "anonimo"
+    elif actividad.organizador_id == request.user.pk:
+        accion = "organizador"
+    elif inscripcion:
+        accion = "inscrito"
+    elif disponibles == 0:
+        accion = "sin_cupo"
+    else:
+        accion = "disponible"
+
     return render(
         request,
         "actividades/detalle_publico.html",
         {
             "actividad": actividad,
             "consulta_calendario": consulta_calendario,
+            "disponibles": disponibles,
+            "inscripcion": inscripcion,
+            "accion": accion,
+        },
+    )
+
+
+
+
+
+
+
+
+@require_safe
+def catalogo(request):
+    busqueda = request.GET.get("q", "").strip()[:100]
+    deporte = request.GET.get("deporte", "").strip()[:100]
+
+    # Solo actividades que todavía aceptan inscripciones.
+    base = Actividad.objects.filter(
+        estado=Actividad.Estado.PUBLICADA,
+        fecha_fin__gt=timezone.now(),
+    )
+
+    deportes = sorted(
+        {d.strip() for d in base.values_list("deporte", flat=True)},
+        key=str.casefold,
+    )
+
+    actividades = base.select_related("organizador").annotate(
+        ocupados=Count(
+            "inscripciones",
+            filter=Q(inscripciones__estado="confirmada"),
+        ),
+    )
+
+    if busqueda:
+        actividades = actividades.filter(
+            Q(nombre__icontains=busqueda)
+            | Q(deporte__icontains=busqueda)
+            | Q(ubicacion__icontains=busqueda)
+        )
+
+    if deporte:
+        actividades = actividades.filter(deporte__iexact=deporte)
+
+
+    # Agrupa por deporte sin distinguir mayúsculas ("Futbol" = "futbol").
+    grupos = {}
+
+    for actividad in actividades.order_by("fecha_inicio", "pk"):
+        actividad.disponibles = max(
+            actividad.cupo_maximo - actividad.ocupados,
+            0,
+        )
+        clave = actividad.deporte.strip().casefold()
+        grupos.setdefault(
+            clave,
+            {"deporte": actividad.deporte.strip(), "actividades": []},
+        )["actividades"].append(actividad)
+
+    grupos_ordenados = [grupos[c] for c in sorted(grupos)]
+
+    return render(
+        request,
+        "actividades/catalogo.html",
+        {
+            "grupos": grupos_ordenados,
+            "deportes": deportes,
+            "busqueda": busqueda,
+            "deporte": deporte,
+            "total": sum(len(g["actividades"]) for g in grupos_ordenados),
         },
     )
