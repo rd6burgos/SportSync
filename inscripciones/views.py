@@ -1,4 +1,5 @@
 import segno
+from .notificaciones import notificar_inscripcion, notificar_promocion
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -8,11 +9,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST, require_safe
 
+
+
 from actividades.models import Actividad
 
 from .lista_espera import hay_lista_espera, promover_lista_espera
 from .models import Inscripcion
 from .validaciones import motivo_de_rechazo
+
 
 
 @login_required
@@ -51,12 +55,37 @@ def inscribirse(request, actividad_id):
                     )
             except IntegrityError:
                 error = "Ya estás inscrito en esta actividad."
+            else:
+                notificar_inscripcion(inscripcion)
 
     if error:
         messages.error(request, error)
         return redirect("actividades:detalle_publico", actividad_id=actividad_id)
 
     return redirect("inscripciones:detalle", inscripcion_id=inscripcion.pk)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @login_required
@@ -88,6 +117,38 @@ def detalle_inscripcion(request, inscripcion_id):
         "inscripciones/detalle.html",
         {"inscripcion": inscripcion, "qr_svg": qr_svg},
     )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @login_required
@@ -129,7 +190,10 @@ def cancelar_inscripcion(request, inscripcion_id):
             # CR-04: si se liberó un cupo, entra el primero de la lista de
             # espera. Si quien canceló estaba en la lista, no hay cupo libre
             # y esta llamada no hace nada.
-            promover_lista_espera(actividad)
+
+            for promovida in promover_lista_espera(actividad):
+                # CR-13: avisa a quien entró desde la lista de espera.
+                notificar_promocion(promovida)
 
             messages.success(request, "Inscripción cancelada.")
 

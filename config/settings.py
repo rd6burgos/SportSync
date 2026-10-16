@@ -135,3 +135,36 @@ AUTH_USER_MODEL = "usuarios.Usuario"
 LOGIN_URL = "usuarios:login"
 LOGIN_REDIRECT_URL = "inicio"
 LOGOUT_REDIRECT_URL = "inicio"
+
+
+
+
+
+
+
+
+
+
+# ---------------------------------------------------------------------------
+# Correo electrónico (notificaciones)
+# ---------------------------------------------------------------------------
+# Las credenciales viven en config/configuracion_local.py, que NO se sube a
+# GitHub. Si no existen, los correos se imprimen en la terminal (modo desarrollo).
+try:
+    from .configuracion_local import EMAIL_HOST_USER, EMAIL_HOST_PASSWORD
+except ImportError:
+    EMAIL_HOST_USER = ""
+    EMAIL_HOST_PASSWORD = ""
+
+if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = "smtp.gmail.com"
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    DEFAULT_FROM_EMAIL = f"SportSync <{EMAIL_HOST_USER}>"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    DEFAULT_FROM_EMAIL = "SportSync <no-reply@sportsync.local>"
+
+# Si el servidor de correo no responde, no dejar la página esperando.
+EMAIL_TIMEOUT = 10

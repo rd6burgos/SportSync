@@ -3,11 +3,22 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_http_methods, require_POST
 
+
+from inscripciones.notificaciones import notificar_cambio_estado
+
+
+
 from usuarios.decorators import roles_permitidos
 from usuarios.models import Usuario
 
 from .forms import ActividadForm
 from .models import Actividad
+
+
+
+
+
+
 
 
 @roles_permitidos(Usuario.Rol.ORGANIZADOR)
@@ -21,6 +32,15 @@ def panel_actividades_organizador(request):
         "actividades/panel_actividades_organizador.html",
         {"actividades": actividades},
     )
+
+
+
+
+
+
+
+
+
 
 
 
@@ -54,6 +74,16 @@ def crear_actividad(request):
         "actividades/formulario_actividad.html",
         {"form": form},
     )
+
+
+
+
+
+
+
+
+
+
 
 
 @roles_permitidos(Usuario.Rol.ORGANIZADOR)
@@ -125,6 +155,22 @@ def editar_actividad(request, actividad_id):
     )
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @roles_permitidos(Usuario.Rol.ORGANIZADOR)
 @require_POST
 def cambiar_estado_actividad(request, actividad_id):
@@ -144,10 +190,15 @@ def cambiar_estado_actividad(request, actividad_id):
             messages.error(request, mensaje)
 
     else:
-        messages.success(
-            request,
-            f"Estado actualizado a: {actividad.get_estado_display()}.",
-        )
+        # CR-13: avisa por correo a los inscritos cuando corresponde.
+        notificados = notificar_cambio_estado(actividad)
+
+        texto = f"Estado actualizado a: {actividad.get_estado_display()}."
+
+        if notificados:
+            texto += f" Se notificó por correo a {notificados} inscrito(s)."
+
+        messages.success(request, texto)
 
     return redirect(
         "actividades:panel_actividades_organizador"
