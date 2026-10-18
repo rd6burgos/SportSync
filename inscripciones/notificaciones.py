@@ -42,6 +42,17 @@ TEXTOS = {
         "Se liberó un cupo y tu inscripción pasó de la lista de espera a "
         "confirmada. Inicia sesión en SportSync para ver tu código QR.",
     ),
+    Notificacion.Tipo.PAGO_APROBADO: (
+        "Pago aprobado: {actividad}",
+        "El organizador aprobó tu pago. Ya puedes ver tu código QR de "
+        "asistencia iniciando sesión en SportSync.",
+    ),
+    Notificacion.Tipo.PAGO_RECHAZADO: (
+        "Pago rechazado: {actividad}",
+        "El organizador rechazó tu pago (no se recibió o no pudo "
+        "verificarse). Tu inscripción fue cancelada y el cupo quedó libre. "
+        "Si crees que es un error, comunícate con el organizador.",
+    ),
     Notificacion.Tipo.ACTIVIDAD_EN_CURSO: (
         "La actividad {actividad} ha comenzado",
         "El organizador inició la actividad en la que estás inscrito.",
@@ -52,9 +63,27 @@ TEXTOS = {
         "inscrito. ¡Gracias por participar!",
     ),
     Notificacion.Tipo.ACTIVIDAD_CANCELADA: (
+
         "Actividad cancelada: {actividad}",
         "Lamentamos informarte que el organizador canceló la actividad en "
         "la que estabas inscrito.",
+    ),
+}
+
+# En actividades con costo, estos dos avisos cambian: el QR depende del pago.
+TEXTOS_CON_COSTO = {
+    Notificacion.Tipo.INSCRIPCION_CONFIRMADA: (
+        "Tu inscripción quedó confirmada. Esta actividad tiene un costo de "
+        "${monto}: tu pago aparece como pendiente. Puedes pagarlo desde tu "
+        "inscripción en SportSync o en persona con el organizador. Tu código "
+        "QR estará disponible cuando el pago sea aprobado."
+    ),
+    Notificacion.Tipo.PROMOCION: (
+        "Se liberó un cupo y tu inscripción pasó de la lista de espera a "
+        "confirmada. Esta actividad tiene un costo de ${monto}: tu pago "
+        "aparece como pendiente. Puedes pagarlo desde tu inscripción en "
+        "SportSync o en persona con el organizador. Tu código QR estará "
+        "disponible cuando el pago sea aprobado."
     ),
 }
 
@@ -63,11 +92,11 @@ TIPO_POR_ESTADO = {
     Actividad.Estado.EN_CURSO: Notificacion.Tipo.ACTIVIDAD_EN_CURSO,
     Actividad.Estado.FINALIZADA: Notificacion.Tipo.ACTIVIDAD_FINALIZADA,
     Actividad.Estado.CANCELADA: Notificacion.Tipo.ACTIVIDAD_CANCELADA,
-
 }
 
 
 def enviar_notificacion(notificacion_id):
+
     """
     Envía una notificación ya registrada y guarda el resultado.
 
@@ -96,11 +125,11 @@ def enviar_notificacion(notificacion_id):
     else:
         notificacion.estado = Notificacion.Estado.ENVIADA
         notificacion.error = ""
-
         notificacion.fecha_envio = timezone.now()
 
     notificacion.save(update_fields=["estado", "error", "fecha_envio"])
     return notificacion
+
 
 
 def registrar_notificacion(destinatario, actividad, tipo):
@@ -110,6 +139,9 @@ def registrar_notificacion(destinatario, actividad, tipo):
     deshace, no se envía ningún correo.
     """
     asunto, texto = TEXTOS[tipo]
+
+    if actividad.costo > 0 and tipo in TEXTOS_CON_COSTO:
+        texto = TEXTOS_CON_COSTO[tipo].format(monto=f"{actividad.costo:.2f}")
 
     notificacion = Notificacion.objects.create(
         destinatario=destinatario,
@@ -129,8 +161,8 @@ def registrar_notificacion(destinatario, actividad, tipo):
     return notificacion
 
 
-
 # --- Eventos del sistema ---------------------------------------------------
+
 
 def notificar_inscripcion(inscripcion):
     """Avisa al participante si quedó confirmado o en lista de espera."""
@@ -151,6 +183,25 @@ def notificar_promocion(inscripcion):
     )
 
 
+def notificar_pago_aprobado(pago):
+    """Avisa al participante que el organizador aprobó su pago."""
+    return registrar_notificacion(
+        pago.inscripcion.participante,
+        pago.inscripcion.actividad,
+        Notificacion.Tipo.PAGO_APROBADO,
+    )
+
+
+def notificar_pago_rechazado(pago):
+    """Avisa al participante que su pago fue rechazado y su inscripción cancelada."""
+    return registrar_notificacion(
+
+        pago.inscripcion.participante,
+        pago.inscripcion.actividad,
+        Notificacion.Tipo.PAGO_RECHAZADO,
+    )
+
+
 def notificar_cambio_estado(actividad):
     """
     Avisa a los inscritos (confirmados y en lista de espera) cuando la
@@ -161,7 +212,6 @@ def notificar_cambio_estado(actividad):
 
     if tipo is None:
         return 0
-
 
     inscripciones = (
         actividad.inscripciones.exclude(estado=Inscripcion.Estado.CANCELADA)
