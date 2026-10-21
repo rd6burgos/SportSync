@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import Inscripcion, Notificacion
+from .models import Inscripcion, Notificacion, Pago
 from .notificaciones import enviar_notificacion
 
 
@@ -42,3 +42,21 @@ class NotificacionAdmin(admin.ModelAdmin):
             f"Se reenviaron {enviadas} de {fallidas.count()} notificaciones fallidas.",
             messages.SUCCESS if enviadas == fallidas.count() else messages.WARNING,
         )
+
+
+
+@admin.register(Pago)
+class PagoAdmin(admin.ModelAdmin):
+    list_display = ("inscripcion", "monto", "estado", "metodo", "fecha_creacion")
+    list_filter = ("estado", "metodo")
+    search_fields = ("inscripcion__participante__email", "inscripcion__actividad__nombre")
+
+    # Es un registro de control: se consulta, no se edita a mano.
+    readonly_fields = (
+        "inscripcion", "monto", "estado", "metodo", "fecha_creacion",
+        "fecha_pago", "revisado_por", "fecha_revision",
+        "paypal_order_id", "paypal_capture_id",
+    )
+
+    def has_add_permission(self, request):
+        return False

@@ -98,14 +98,20 @@
             </p>
         {% endfor %}
 
-        {% if accion == "disponible" %}
+               {% if accion == "disponible" %}
             <form method="post" action="{% url 'inscripciones:inscribirse' actividad.pk %}" class="mt-6">
                 {% csrf_token %}
                 <button type="submit"
                         class="rounded-full bg-blue-700 px-8 py-3 font-bold text-white transition hover:bg-blue-800">
-                    {% if actividad.costo == 0 %}Inscribirme{% else %}Pagar e inscribirme{% endif %}
+                    Inscribirme
                 </button>
             </form>
+            {% if actividad.costo > 0 %}
+                <p class="mt-2 text-sm text-slate-600">
+                    Esta actividad tiene un costo de ${{ actividad.costo|floatformat:2 }}.
+                    Realizarás el pago después de inscribirte.
+                </p>
+            {% endif %}
         {% elif accion == "anonimo" %}
             <a href="{% url 'usuarios:login' %}?next={{ request.path|urlencode }}"
                class="mt-6 inline-block rounded-full bg-blue-700 px-8 py-3 font-bold text-white transition hover:bg-blue-800">

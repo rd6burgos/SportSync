@@ -18,6 +18,7 @@
 <section class="mx-auto max-w-5xl px-6 py-12">
     <div class="rounded-2xl bg-white p-8 text-slate-900 shadow-lg">
 
+        <!-- Encabezado y Botones Principales -->
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold">Mis actividades</h1>
@@ -26,99 +27,97 @@
                 </p>
             </div>
 
-            <a href="{% url 'actividades:crear_actividad' %}"
-               class="rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800">
-                Crear actividad
-            </a>
+            <div class="flex flex-wrap gap-3">
+                <a href="{% url 'inscripciones:panel_pagos' %}"
+                   class="rounded-lg border border-blue-700 px-5 py-3 font-semibold text-blue-700 hover:bg-blue-50">
+                    Pagos
+                </a>
+
+                <a href="{% url 'actividades:crear_actividad' %}"
+                   class="rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800">
+                    Crear actividad
+                </a>
+            </div>
         </div>
 
-        {% for actividad in actividades %}
-            <article class="mb-5 rounded-lg border border-slate-200 p-5">
-                <h2 class="break-words text-xl font-semibold">
-                    {{ actividad.nombre }}
-                </h2>
+        <!-- Lista / Grid de Actividades -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for actividad in actividades %}
+                <article class="flex flex-col justify-between rounded-lg border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div>
+                        <h2 class="break-words text-xl font-semibold text-slate-900">
+                            {{ actividad.nombre }}
+                        </h2>
 
-                <p class="mt-2">
-                    <strong>Tipo:</strong> {{ actividad.get_tipo_display }}
-                </p>
+                        <div class="mt-3 space-y-1.5 text-sm text-slate-700">
+                            <p><strong>Tipo:</strong> {{ actividad.get_tipo_display }}</p>
+                            <p><strong>Deporte:</strong> {{ actividad.deporte }}</p>
+                            <p class="break-words"><strong>Ubicación:</strong> {{ actividad.ubicacion }}</p>
+                            <p><strong>Inicio:</strong> {{ actividad.fecha_inicio|date:"d/m/Y H:i" }}</p>
+                            <p><strong>Finalización:</strong> {{ actividad.fecha_fin|date:"d/m/Y H:i" }}</p>
+                            <p><strong>Cupo máximo:</strong> {{ actividad.cupo_maximo }}</p>
+                            <p>
+                                <strong>Costo:</strong>
+                                {% if actividad.costo == 0 %}
+                                    Gratuita
+                                {% else %}
+                                    ${{ actividad.costo|floatformat:2 }}
+                                {% endif %}
+                            </p>
+                            <p><strong>Estado:</strong> {{ actividad.get_estado_display }}</p>
+                        </div>
+                    </div>
 
-                <p class="mt-2">
-                    <strong>Deporte:</strong> {{ actividad.deporte }}
-                </p>
+                    <!-- Acciones de la Actividad -->
+                    <div class="mt-5 pt-3 border-t border-slate-100">
+                        {% if actividad.estado == "borrador" %}
+                            <a href="{% url 'actividades:editar_actividad' actividad.id %}"
+                               class="mb-3 inline-block rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800">
+                                Editar
+                            </a>
+                        {% endif %}
 
-                <p class="mt-2 break-words">
-                    <strong>Ubicación:</strong> {{ actividad.ubicacion }}
-                </p>
+                        <div class="flex flex-wrap gap-2">
+                            {% for estado in actividad.transiciones_permitidas %}
+                                <form method="post"
+                                      action="{% url 'actividades:cambiar_estado_actividad' actividad.id %}">
+                                    {% csrf_token %}
 
-                <p class="mt-2">
-                    <strong>Inicio:</strong>
-                    {{ actividad.fecha_inicio|date:"d/m/Y H:i" }}
-                </p>
+                                    <input type="hidden" name="estado" value="{{ estado }}">
 
-                <p class="mt-2">
-                    <strong>Finalización:</strong>
-                    {{ actividad.fecha_fin|date:"d/m/Y H:i" }}
-                </p>
-
-                <p class="mt-2">
-                    <strong>Cupo máximo:</strong> {{ actividad.cupo_maximo }}
-                </p>
-
-                <p class="mt-2">
-                    <strong>Costo:</strong>
-                    {% if actividad.costo == 0 %}
-                        Gratuita
-                    {% else %}
-                        ${{ actividad.costo|floatformat:2 }}
-                    {% endif %}
-                </p>
-
-                <p class="mt-2">
-                    <strong>Estado:</strong> {{ actividad.get_estado_display }}
-                </p>
-                {% if actividad.estado == "borrador" %}
-    <a href="{% url 'actividades:editar_actividad' actividad.id %}"
-       class="mt-4 inline-block rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800">
-        Editar
-    </a>
-{% endif %}
-<div class="mt-4 flex flex-wrap gap-3">
-    {% for estado in actividad.transiciones_permitidas %}
-        <form method="post"
-              action="{% url 'actividades:cambiar_estado_actividad' actividad.id %}">
-            {% csrf_token %}
-
-            <input type="hidden" name="estado" value="{{ estado }}">
-
-            <button type="submit"
-                    class="rounded-lg px-5 py-3 font-semibold text-white
-                           {% if estado == 'cancelada' %}
-                               bg-red-700 hover:bg-red-800
-                           {% else %}
-                               bg-green-700 hover:bg-green-800
-                           {% endif %}">
-                {% if estado == "publicada" %}
-                    Publicar
-                {% elif estado == "inscripcion_cerrada" %}
-                    Cerrar inscripciones
-                {% elif estado == "en_curso" %}
-                    Iniciar actividad
-                {% elif estado == "finalizada" %}
-                    Finalizar actividad
-                {% elif estado == "cancelada" %}
-                    Cancelar actividad
-                {% endif %}
-            </button>
-        </form>
-    {% endfor %}
-</div>
-            </article>
-        {% empty %}
-            <p class="rounded-lg bg-slate-100 p-5 text-slate-600">
-                Todavía no has creado actividades.
-                Usa el botón “Crear actividad” para comenzar.
-            </p>
-        {% endfor %}
+                                    <button type="submit"
+                                            class="rounded-lg px-4 py-2 text-sm font-semibold text-white
+                                                   {% if estado == 'cancelada' %}
+                                                       bg-red-700 hover:bg-red-800
+                                                   {% else %}
+                                                       bg-green-700 hover:bg-green-800
+                                                   {% endif %}">
+                                        {% if estado == "publicada" %}
+                                            Publicar
+                                        {% elif estado == "inscripcion_cerrada" %}
+                                            Cerrar inscripciones
+                                        {% elif estado == "en_curso" %}
+                                            Iniciar actividad
+                                        {% elif estado == "finalizada" %}
+                                            Finalizar actividad
+                                        {% elif estado == "cancelada" %}
+                                            Cancelar actividad
+                                        {% endif %}
+                                    </button>
+                                </form>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </article>
+            {% empty %}
+                <div class="col-span-full">
+                    <p class="rounded-lg bg-slate-100 p-5 text-slate-600">
+                        Todavía no has creado actividades.
+                        Usa el botón “Crear actividad” para comenzar.
+                    </p>
+                </div>
+            {% endfor %}
+        </div>
 
     </div>
 </section>

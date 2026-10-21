@@ -168,3 +168,13 @@ else:
 
 # Si el servidor de correo no responde, no dejar la página esperando.
 EMAIL_TIMEOUT = 10
+
+
+# ---------------------------------------------------------------------------
+# PayPal Sandbox
+# ---------------------------------------------------------------------------
+try:
+    from .configuracion_local import PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET
+except ImportError:
+    PAYPAL_CLIENT_ID = ""
+    PAYPAL_CLIENT_SECRET = ""
