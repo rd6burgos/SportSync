@@ -1,0 +1,182 @@
+{% extends "core/base.html" %}
+
+{% block titulo %}Partidos | {{ torneo.nombre }}{% endblock %}
+
+{% block contenido %}
+<section class="mx-auto max-w-5xl px-6 py-12">
+
+    {% for mensaje in messages %}
+        <p class="mb-4 rounded-lg p-4 {% if mensaje.tags == 'error' %}bg-red-50 text-red-900{% else %}bg-green-50 text-green-900{% endif %}">
+            {{ mensaje }}
+        </p>
+    {% endfor %}
+
+    <div class="rounded-2xl bg-white p-8 text-slate-900 shadow-lg">
+
+        <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
+                <h1 class="break-words text-3xl font-bold">Partidos y resultados</h1>
+                <p class="mt-1 break-words text-lg text-slate-700">{{ torneo.nombre }}</p>
+                <p class="mt-2 text-sm text-slate-600">
+                    Estado del torneo: <strong>{{ torneo.get_estado_display }}</strong>
+                    · Participantes con inscripción válida: <strong>{{ total_validos }}</strong>
+                </p>
+            </div>
+
+            <div class="flex flex-col items-end gap-2 text-sm font-semibold">
+                <a href="{% url 'actividades:panel_actividades_organizador' %}" class="text-blue-700 hover:underline">
+                    ← Mis actividades
+                </a>
+                <a href="{% url 'torneos:partidos_publicos' torneo.pk %}" class="text-blue-700 hover:underline">
+                    Ver página pública
+                </a>
+
+            </div>
+        </div>
+
+        <!-- Programar un partido -->
+        {% if puede_programar %}
+            <div class="mb-8 rounded-xl bg-slate-50 p-5">
+                <h2 class="text-xl font-semibold">Programar un partido</h2>
+
+                {% if total_validos < 2 %}
+                    <p class="mt-3 text-slate-600">
+                        Necesitas al menos dos participantes con inscripción válida para programar un partido.
+                        Una inscripción es válida si está confirmada y, en torneos con costo, su pago está aprobado.
+                    </p>
+                {% else %}
+                    {% if form.non_field_errors %}
+                        <div class="mt-3 rounded-lg bg-red-50 p-4 text-red-900">
+                            {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <form method="post" action="{% url 'torneos:crear_partido' torneo.pk %}" class="mt-4 grid gap-4 sm:grid-cols-2">
+                        {% csrf_token %}
+
+                        {% for campo in form %}
+                            <div class="{% if campo.name == 'ronda' or campo.name == 'fecha_hora' %}sm:col-span-1{% endif %}">
+                                <label for="{{ campo.id_for_label }}" class="mb-1 block text-sm font-semibold">
+                                    {{ campo.label }}
+                                </label>
+                                {{ campo }}
+                                {% for error in campo.errors %}
+                                    <p class="mt-1 text-sm text-red-700">{{ error }}</p>
+                                {% endfor %}
+
+                            </div>
+                        {% endfor %}
+
+                        <div class="sm:col-span-2">
+                            <button type="submit"
+                                    class="rounded-lg bg-blue-700 px-6 py-3 font-semibold text-white hover:bg-blue-800">
+                                Programar partido
+                            </button>
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+        {% else %}
+            <p class="mb-8 rounded-lg bg-slate-100 p-4 text-slate-700">
+                {% if torneo.estado == "finalizada" or torneo.estado == "cancelada" %}
+                    El torneo está {{ torneo.get_estado_display|lower }}: los partidos solo se pueden consultar.
+                {% else %}
+                    Podrás programar partidos cuando cierres las inscripciones, para que la lista de participantes ya esté definida.
+                {% endif %}
+            </p>
+        {% endif %}
+
+        {% if puede_programar and not puede_registrar %}
+            <p class="mb-6 rounded-lg bg-blue-50 p-4 text-blue-900">
+                Los resultados se registran cuando el torneo está <strong>En curso</strong>.
+            </p>
+        {% endif %}
+
+        <!-- Lista de partidos -->
+        <h2 class="mb-4 text-xl font-semibold">Partidos</h2>
+
+        {% for partido in partidos %}
+
+            <article class="mb-4 rounded-lg border border-slate-200 p-5">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-sm text-slate-600">
+                            {% if partido.ronda %}<strong>{{ partido.ronda }}</strong> · {% endif %}
+                            {{ partido.fecha_hora|date:"d/m/Y H:i" }}
+                        </p>
+                        <h3 class="mt-1 break-words text-lg font-semibold">
+                            {{ partido.participante_a.nombre_publico }}
+                            <span class="text-slate-500">vs</span>
+                            {{ partido.participante_b.nombre_publico }}
+                        </h3>
+                    </div>
+
+                    <div class="text-right">
+                        {% if partido.estado == "jugado" %}
+                            <p class="text-2xl font-bold">{{ partido.marcador_a }} - {{ partido.marcador_b }}</p>
+                        {% endif %}
+                        <span class="inline-block rounded-full px-3 py-1 text-sm font-semibold
+                            {% if partido.estado == 'jugado' %}bg-green-100 text-green-800
+                            {% elif partido.estado == 'cancelado' %}bg-slate-200 text-slate-700
+                            {% else %}bg-amber-100 text-amber-800{% endif %}">
+                            {{ partido.get_estado_display }}
+                        </span>
+                    </div>
+                </div>
+
+                {% if partido.estado == "jugado" and partido.resultado_registrado_por %}
+                    <p class="mt-2 text-xs text-slate-500">
+                        Resultado registrado por {{ partido.resultado_registrado_por.nombre_publico }}
+                        el {{ partido.fecha_resultado|date:"d/m/Y H:i" }}.
+                    </p>
+
+                {% endif %}
+
+                {% if partido.estado != "cancelado" and not partido.valido %}
+                    <p class="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                        Uno de los participantes ya no tiene una inscripción válida. Cancela este partido o revisa las inscripciones.
+                    </p>
+                {% endif %}
+
+                <div class="mt-4 flex flex-wrap items-end gap-4">
+                    {% if puede_registrar and partido.estado != "cancelado" and partido.valido %}
+                        <form method="post" action="{% url 'torneos:registrar_resultado' partido.pk %}" class="flex flex-wrap items-end gap-3">
+                            {% csrf_token %}
+                            <div>
+                                <label for="a-{{ partido.pk }}" class="block text-xs font-semibold">{{ partido.participante_a.nombre_publico }}</label>
+                                <input id="a-{{ partido.pk }}" type="number" name="marcador_a" min="0" max="999" required
+                                       value="{{ partido.marcador_a|default_if_none:'' }}"
+                                       class="w-24 rounded-lg border border-slate-300 px-3 py-2">
+                            </div>
+                            <div>
+                                <label for="b-{{ partido.pk }}" class="block text-xs font-semibold">{{ partido.participante_b.nombre_publico }}</label>
+                                <input id="b-{{ partido.pk }}" type="number" name="marcador_b" min="0" max="999" required
+                                       value="{{ partido.marcador_b|default_if_none:'' }}"
+                                       class="w-24 rounded-lg border border-slate-300 px-3 py-2">
+                            </div>
+                            <button type="submit"
+                                    class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
+                                {% if partido.estado == "jugado" %}Corregir resultado{% else %}Guardar resultado{% endif %}
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {% if puede_programar and partido.estado == "programado" %}
+
+                        <form method="post" action="{% url 'torneos:cancelar_partido' partido.pk %}"
+                              onsubmit="return confirm('¿Cancelar este partido?');">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">
+                                Cancelar partido
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </article>
+        {% empty %}
+            <p class="rounded-lg bg-slate-100 p-5 text-slate-600">Todavía no hay partidos programados.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

@@ -87,6 +87,16 @@
             </div>
         </dl>
 
+
+
+
+        {% if actividad.tipo == "torneo" and actividad.estado != "borrador" %}
+            <a href="{% url 'torneos:partidos_publicos' actividad.pk %}"
+               class="mt-6 inline-block font-semibold text-blue-700 hover:underline">
+                Ver partidos y resultados →
+            </a>
+        {% endif %}
+
         
 
 
