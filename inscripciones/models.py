@@ -275,3 +275,45 @@ class Notificacion(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_display()} → {self.correo} ({self.get_estado_display()})"
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+class Asistencia(models.Model):
+    """Registro único de asistencia por inscripción (etapa 15 / CR-09)."""
+
+    inscripcion = models.OneToOneField(
+        Inscripcion,
+        on_delete=models.PROTECT,
+        related_name="asistencia",
+    )
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="asistencias_registradas",
+    )
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-fecha_registro"]
+        verbose_name = "asistencia"
+        verbose_name_plural = "asistencias"
+
+    def __str__(self):
+        return f"{self.inscripcion} · {self.fecha_registro:%d/%m/%Y %H:%M}"

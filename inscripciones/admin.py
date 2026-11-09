@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import Inscripcion, Notificacion, Pago
+from .models import Asistencia, Inscripcion, Notificacion, Pago
 from .notificaciones import enviar_notificacion
 
 
@@ -59,4 +59,24 @@ class PagoAdmin(admin.ModelAdmin):
     )
 
     def has_add_permission(self, request):
+        
         return False
+
+
+
+
+
+
+
+    
+
+@admin.register(Asistencia)
+class AsistenciaAdmin(admin.ModelAdmin):
+    list_display = ("inscripcion", "registrado_por", "fecha_registro")
+    search_fields = ("inscripcion__participante__email", "inscripcion__actividad__nombre")
+    list_select_related = ("inscripcion", "registrado_por")
+    readonly_fields = ("inscripcion", "registrado_por", "fecha_registro")
+
+    def has_add_permission(self, request):
+        return False
+

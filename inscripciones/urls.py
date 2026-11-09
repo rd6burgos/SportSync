@@ -5,6 +5,8 @@ from . import views
 app_name = "inscripciones"
 
 urlpatterns = [
+    path("actividad/<int:actividad_id>/escanear/", views.escanear_qr, name="escanear_qr"),
+    path("actividad/<int:actividad_id>/validar-qr/", views.validar_qr, name="validar_qr"),
     path("pagos/", views.panel_pagos, name="panel_pagos"),
     path("pagos/<int:pago_id>/estado/", views.cambiar_estado_pago, name="cambiar_estado_pago"),
     path("<int:actividad_id>/inscribirse/", views.inscribirse, name="inscribirse"),

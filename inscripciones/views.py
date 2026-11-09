@@ -1,4 +1,5 @@
 import segno
+import uuid
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -16,7 +17,7 @@ from usuarios.decorators import roles_permitidos
 from usuarios.models import Usuario
 
 from .lista_espera import hay_lista_espera, promover_lista_espera
-from .models import Inscripcion, Pago
+from .models import Asistencia, Inscripcion, Pago
 from .notificaciones import notificar_inscripcion, notificar_promocion
 from .pagos import cancelar_pago, crear_pago_si_corresponde, resolver_pago
 from .validaciones import motivo_de_rechazo
@@ -235,6 +236,132 @@ def cancelar_inscripcion(request, inscripcion_id):
         actividad_id=inscripcion.actividad_id,
     )
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# --- Etapa 15: escaneo y validación de QR (CR-09) ---------------------------
+
+@login_required
+@roles_permitidos(Usuario.Rol.ORGANIZADOR)
+@require_safe
+def escanear_qr(request, actividad_id):
+    """Muestra el escáner solo al organizador propietario de la actividad."""
+    actividad = get_object_or_404(
+        Actividad,
+        pk=actividad_id,
+        organizador=request.user,
+    )
+
+    return render(
+        request,
+        "inscripciones/escanear_qr.html",
+        {"actividad": actividad},
+    )
+
+
+@login_required
+@roles_permitidos(Usuario.Rol.ORGANIZADOR)
+@require_POST
+def validar_qr(request, actividad_id):
+    """Valida un QR y registra una sola asistencia para la inscripción."""
+    token_recibido = request.POST.get("token", "").strip()
+    if not token_recibido:
+        return JsonResponse(
+            {"ok": False, "mensaje": "No se recibió ningún código QR."},
+            status=400,
+        )
+
+    try:
+        token = uuid.UUID(token_recibido)
+    except (ValueError, AttributeError, TypeError):
+        return JsonResponse(
+            {"ok": False, "mensaje": "El código QR no tiene un formato válido."},
+            status=400,
+        )
+
+    with transaction.atomic():
+        # Releer y bloquear la actividad y la inscripción durante la validación.
+        actividad = get_object_or_404(
+            Actividad.objects.select_for_update(),
+            pk=actividad_id,
+            organizador=request.user,
+        )
+
+        if actividad.estado != Actividad.Estado.EN_CURSO:
+            return JsonResponse(
+                {"ok": False, "mensaje": "La asistencia solo se puede registrar cuando la actividad está en curso."},
+                status=409,
+            )
+
+        try:
+            inscripcion = (
+                Inscripcion.objects.select_for_update()
+                .select_related("participante", "actividad", "pago")
+                .get(qr_token=token, actividad=actividad)
+            )
+        except Inscripcion.DoesNotExist:
+            return JsonResponse(
+                {"ok": False, "mensaje": "El QR no corresponde a una inscripción de esta actividad."},
+                status=404,
+            )
+
+        if not inscripcion.qr_habilitado:
+            if inscripcion.estado != Inscripcion.Estado.CONFIRMADA:
+                mensaje = "La inscripción no está confirmada."
+            else:
+                mensaje = "El pago de esta inscripción todavía no está aprobado."
+            return JsonResponse({"ok": False, "mensaje": mensaje}, status=409)
+
+        if Asistencia.objects.filter(inscripcion=inscripcion).exists():
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "mensaje": "Este código QR ya fue utilizado. La asistencia ya está registrada.",
+                    "participante": inscripcion.participante.nombre_publico(),
+                },
+                status=409,
+            )
+
+        try:
+            # El bloque interno permite manejar la restricción OneToOne si dos
+            # escaneos llegan casi simultáneamente. La BD es la última defensa.
+            with transaction.atomic():
+                Asistencia.objects.create(
+                    inscripcion=inscripcion,
+                    registrado_por=request.user,
+                )
+        except IntegrityError:
+            return JsonResponse(
+                {"ok": False, "mensaje": "Este código QR ya fue utilizado. La asistencia ya está registrada."},
+                status=409,
+            )
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "mensaje": "Asistencia registrada correctamente.",
+            "participante": inscripcion.participante.nombre_publico(),
+            "actividad": actividad.nombre,
+        }
+    )
 
 
 # --- Panel de pagos del organizador (CR-12) ---------------------------------

@@ -7,7 +7,7 @@ from django.utils import timezone
 from actividades.models import Actividad
 from usuarios.models import Usuario
 
-from .models import Inscripcion
+from .models import Asistencia, Inscripcion, Pago
 from .validaciones import conflicto_de_horario, esta_inscrito
 
 
@@ -46,6 +46,17 @@ class ValidacionInscripcionTests(TestCase):
         self.client.force_login(usuario)
         return self.client.post(
             reverse("inscripciones:inscribirse", args=[actividad.pk]), follow=True
+
+
+
+
+
+
+
+
+
+
+            
         )
 
     # --- Regla de solapamiento -------------------------------------------
@@ -93,6 +104,16 @@ class ValidacionInscripcionTests(TestCase):
         self.inscribir(self.ana, a)
         self.assertIsNone(conflicto_de_horario(self.ana, b))
 
+
+
+
+
+
+
+
+
+
+
     # --- Qué inscripciones cuentan ---------------------------------------
 
     def test_inscripcion_cancelada_no_genera_conflicto(self):
@@ -132,6 +153,16 @@ class ValidacionInscripcionTests(TestCase):
             1,
         )
 
+
+
+
+
+
+
+
+
+
+
     # --- Duplicados ------------------------------------------------------
 
     def test_duplicado_se_rechaza_y_no_crea_otra_fila(self):
@@ -157,3 +188,117 @@ class ValidacionInscripcionTests(TestCase):
         self.inscribir(self.luis, b)
         respuesta = self.intentar(self.ana, b)
         self.assertContains(respuesta, "el horario choca")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class EscaneoQRTests(TestCase):
+
+    def setUp(self):
+        self.organizador = Usuario.objects.create_user(
+            "organizador-qr@example.com", "clave-segura-123", rol="organizador"
+        )
+        self.otro_organizador = Usuario.objects.create_user(
+            "otro-org-qr@example.com", "clave-segura-123", rol="organizador"
+        )
+        self.participante = Usuario.objects.create_user(
+            "participante-qr@example.com", "clave-segura-123"
+        )
+        inicio = timezone.now() + timedelta(hours=1)
+        self.actividad = Actividad.objects.create(
+            nombre="Actividad QR",
+            descripcion="Prueba de escaneo",
+            deporte="Fútbol",
+            ubicacion="Cancha",
+            fecha_inicio=inicio,
+            fecha_fin=inicio + timedelta(hours=2),
+            cupo_maximo=10,
+            organizador=self.organizador,
+            estado=Actividad.Estado.EN_CURSO,
+        )
+        self.inscripcion = Inscripcion.objects.create(
+            participante=self.participante,
+            actividad=self.actividad,
+            estado=Inscripcion.Estado.CONFIRMADA,
+        )
+        self.client.force_login(self.organizador)
+        self.url = reverse("inscripciones:validar_qr", args=[self.actividad.pk])
+
+    def test_qr_valido_registra_asistencia(self):
+        respuesta = self.client.post(self.url, {"token": str(self.inscripcion.qr_token)})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertTrue(respuesta.json()["ok"])
+        self.assertTrue(Asistencia.objects.filter(inscripcion=self.inscripcion).exists())
+
+    def test_qr_no_puede_usarse_dos_veces(self):
+        self.client.post(self.url, {"token": str(self.inscripcion.qr_token)})
+        respuesta = self.client.post(self.url, {"token": str(self.inscripcion.qr_token)})
+        self.assertEqual(respuesta.status_code, 409)
+        self.assertFalse(respuesta.json()["ok"])
+        self.assertEqual(Asistencia.objects.filter(inscripcion=self.inscripcion).count(), 1)
+
+    def test_qr_de_otra_actividad_es_rechazado(self):
+        otra = Actividad.objects.create(
+            nombre="Otra actividad", descripcion="Prueba", deporte="Tenis",
+            ubicacion="Cancha 2", fecha_inicio=self.actividad.fecha_inicio,
+            fecha_fin=self.actividad.fecha_fin, cupo_maximo=10,
+            organizador=self.organizador, estado=Actividad.Estado.EN_CURSO,
+        )
+        respuesta = self.client.post(
+            reverse("inscripciones:validar_qr", args=[otra.pk]),
+            {"token": str(self.inscripcion.qr_token)},
+        )
+        self.assertEqual(respuesta.status_code, 404)
+        self.assertFalse(Asistencia.objects.exists())
+
+    def test_no_permite_escanear_si_actividad_no_esta_en_curso(self):
+        self.actividad.estado = Actividad.Estado.PUBLICADA
+        self.actividad.save(update_fields=["estado"])
+        respuesta = self.client.post(self.url, {"token": str(self.inscripcion.qr_token)})
+        self.assertEqual(respuesta.status_code, 409)
+        self.assertFalse(Asistencia.objects.exists())
+
+    def test_rechaza_token_invalido(self):
+        respuesta = self.client.post(self.url, {"token": "esto-no-es-un-uuid"})
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertFalse(Asistencia.objects.exists())
+
+    def test_organizador_no_puede_escanear_actividad_ajena(self):
+        otra = Actividad.objects.create(
+            nombre="Privada", descripcion="Prueba", deporte="Tenis",
+            ubicacion="Cancha 2", fecha_inicio=self.actividad.fecha_inicio,
+            fecha_fin=self.actividad.fecha_fin, cupo_maximo=10,
+            organizador=self.otro_organizador, estado=Actividad.Estado.EN_CURSO,
+        )
+        respuesta = self.client.post(
+            reverse("inscripciones:validar_qr", args=[otra.pk]),
+            {"token": str(self.inscripcion.qr_token)},
+        )
+        self.assertEqual(respuesta.status_code, 404)
+        self.assertFalse(Asistencia.objects.exists())
+
+    def test_pago_pendiente_no_permite_registrar_asistencia(self):
+        Pago.objects.create(inscripcion=self.inscripcion, monto="10.00")
+        respuesta = self.client.post(self.url, {"token": str(self.inscripcion.qr_token)})
+        self.assertEqual(respuesta.status_code, 409)
+        self.assertFalse(Asistencia.objects.exists())

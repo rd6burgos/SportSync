@@ -284,14 +284,18 @@ def detalle_publico(request, actividad_id):
         )
 
     # Qué debe ofrecer la página a este visitante.
-    if actividad.estado != Actividad.Estado.PUBLICADA:
-        accion = "cerrada"
-    elif not request.user.is_authenticated:
-        accion = "anonimo"
+    # Una inscripción existente tiene prioridad sobre el estado de la actividad:
+    # aunque esté en curso o tenga cerradas las inscripciones, el participante
+    # debe poder consultar su inscripción y su QR. Esto NO habilita nuevas
+    # inscripciones; esa posibilidad sigue limitada al estado PUBLICADA.
+    if not request.user.is_authenticated:
+        accion = "anonimo" if actividad.estado == Actividad.Estado.PUBLICADA else "cerrada"
     elif actividad.organizador_id == request.user.pk:
         accion = "organizador"
     elif inscripcion:
         accion = "inscrito"
+    elif actividad.estado != Actividad.Estado.PUBLICADA:
+        accion = "cerrada"
     elif disponibles == 0:
         accion = "sin_cupo"
     else:
