@@ -56,6 +56,10 @@ class Usuario(AbstractUser):
         ORGANIZADOR = "organizador", "Organizador"
         ADMINISTRADOR = "administrador", "Administrador"
 
+    foto_perfil = models.ImageField(
+        "foto de perfil", upload_to="perfiles/", blank=True, null=True
+    )
+
     rol = models.CharField(
         "rol",
         max_length=20,

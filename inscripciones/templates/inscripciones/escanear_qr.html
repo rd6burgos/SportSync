@@ -20,6 +20,34 @@
             </div>
             <form id="csrf-form" class="hidden">{% csrf_token %}</form>
             <div id="resultado" class="mt-5 hidden rounded-xl p-4" role="status" aria-live="polite"></div>
+            <section class="mt-6 rounded-xl border border-slate-200 p-4" aria-labelledby="asistencia-titulo">
+                <h2 id="asistencia-titulo" class="text-lg font-bold">Control de participantes</h2>
+                <p class="mt-1 text-sm text-slate-500">Conteo de inscritos confirmados con QR habilitado.</p>
+                <dl class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div class="rounded-lg bg-slate-50 p-3">
+                        <dt class="text-sm text-slate-600">Participantes habilitados</dt>
+                        <dd id="total-participantes" class="text-2xl font-bold">{{ total_participantes }}</dd>
+                    </div>
+                    <div class="rounded-lg bg-emerald-50 p-3">
+                        <dt class="text-sm text-emerald-800">Asistencias validadas</dt>
+                        <dd id="participantes-validados" class="text-2xl font-bold text-emerald-900">{{ participantes_validados }}</dd>
+                    </div>
+                    <div class="rounded-lg bg-amber-50 p-3">
+                        <dt class="text-sm text-amber-800">Participantes pendientes</dt>
+                        <dd id="participantes-pendientes" class="text-2xl font-bold text-amber-900">{{ participantes_pendientes }}</dd>
+                    </div>
+                </dl>
+                <h3 class="mt-5 font-semibold">Usuarios validados</h3>
+                <p id="lista-vacia" class="mt-2 text-sm text-slate-500" {% if asistencias %}hidden{% endif %}>Aún no se ha validado ningún participante.</p>
+                <ul id="lista-asistencias" class="mt-2 max-h-64 divide-y divide-slate-200 overflow-y-auto">
+                    {% for asistencia in asistencias %}
+                        <li class="flex items-center justify-between gap-3 py-3">
+                            <span class="font-medium">{{ asistencia.inscripcion.participante.nombre_publico }}</span>
+                            <time class="shrink-0 text-sm text-slate-500">{{ asistencia.fecha_registro|date:"d/m/Y H:i" }}</time>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
             <p id="ayuda" class="mt-4 text-sm text-slate-500">Presiona «Iniciar cámara» y permite el acceso a la cámara del dispositivo. Si estás desde una computadora, también puedes usar una cámara web.</p>
         {% else %}
             <div class="rounded-lg bg-amber-50 p-4 text-amber-900">La actividad debe estar en estado «En curso» para registrar asistencia. Estado actual: {{ actividad.get_estado_display }}.</div>
@@ -41,11 +69,36 @@
     const btnDetener = document.getElementById('btn-detener');
     const resultado = document.getElementById('resultado');
     const ayuda = document.getElementById('ayuda');
+    const totalParticipantes = document.getElementById('total-participantes');
+    const participantesValidados = document.getElementById('participantes-validados');
+    const participantesPendientes = document.getElementById('participantes-pendientes');
+    const listaAsistencias = document.getElementById('lista-asistencias');
+    const listaVacia = document.getElementById('lista-vacia');
     const lector = new Html5Qrcode('reader');
     let camaraActiva = false;
     let procesando = false;
 
-    function mostrarResultado(exito, mensaje, participante) {
+    function agregarAsistencia(participante, fecha) {
+        const fila = document.createElement('li');
+        fila.className = 'flex items-center justify-between gap-3 py-3';
+        const nombre = document.createElement('span');
+        nombre.className = 'font-medium';
+        nombre.textContent = participante;
+        const hora = document.createElement('time');
+        hora.className = 'shrink-0 text-sm text-slate-500';
+        hora.textContent = fecha;
+        fila.append(nombre, hora);
+        listaAsistencias.insertBefore(fila, listaAsistencias.firstChild);
+        listaVacia.hidden = true;
+    }
+
+    function actualizarConteo(data) {
+        totalParticipantes.textContent = data.total_participantes;
+        participantesValidados.textContent = data.participantes_validados;
+        participantesPendientes.textContent = data.participantes_pendientes;
+    }
+
+    function mostrarResultado(exito, mensaje, participante, data) {
         resultado.className = 'mt-5 rounded-xl p-4 ' + (exito ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-900');
         resultado.innerHTML = '';
         const titulo = document.createElement('p');
@@ -60,6 +113,10 @@
             nombre.className = 'mt-2 font-semibold';
             nombre.textContent = 'Participante: ' + participante;
             resultado.append(nombre);
+        }
+        if (exito && data) {
+            actualizarConteo(data);
+            agregarAsistencia(participante, data.fecha_registro);
         }
         resultado.classList.remove('hidden');
     }
@@ -87,7 +144,7 @@
                 credentials: 'same-origin'
             });
             const data = await respuesta.json();
-            mostrarResultado(data.ok, data.mensaje, data.participante);
+            mostrarResultado(data.ok, data.mensaje, data.participante, data);
             ayuda.textContent = 'Para escanear otro participante, presiona «Iniciar cámara».';
         } catch (error) {
             mostrarResultado(false, 'No fue posible comunicarse con el servidor. Comprueba tu conexión e inténtalo nuevamente.');

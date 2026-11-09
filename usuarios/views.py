@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
 
-from .forms import RegistroForm, SolicitudOrganizadorForm
+from .forms import RegistroForm, SolicitudOrganizadorForm, FotoPerfilForm
 from django.db import IntegrityError, transaction
 
 from django.http import HttpResponse
@@ -184,3 +185,21 @@ def rechazar_solicitud(request, solicitud_id):
     )
 
     return redirect("usuarios:panel_administrador")
+
+
+
+
+
+
+
+@login_required
+def perfil(request):
+    if request.method == "POST":
+        form = FotoPerfilForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect("usuarios:perfil")
+    else:
+        form = FotoPerfilForm(instance=request.user)
+
+    return render(request, "usuarios/perfil.html", {"form": form})

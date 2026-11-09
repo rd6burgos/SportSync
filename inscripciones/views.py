@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -240,24 +241,31 @@ def cancelar_inscripcion(request, inscripcion_id):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # --- Etapa 15: escaneo y validación de QR (CR-09) ---------------------------
+
+def _inscripciones_escaneables(actividad):
+    return Inscripcion.objects.filter(
+        actividad=actividad,
+        estado=Inscripcion.Estado.CONFIRMADA,
+    ).filter(
+        Q(pago__isnull=True) | Q(pago__estado=Pago.Estado.APROBADO)
+    )
+
+
+def _resumen_asistencia(actividad):
+    inscripciones = _inscripciones_escaneables(actividad)
+    total_participantes = inscripciones.count()
+    participantes_validados = Asistencia.objects.filter(
+        inscripcion__in=inscripciones
+    ).count()
+    return {
+        "total_participantes": total_participantes,
+        "participantes_validados": participantes_validados,
+        "participantes_pendientes": max(
+            total_participantes - participantes_validados, 0
+        ),
+    }
+
 
 @login_required
 @roles_permitidos(Usuario.Rol.ORGANIZADOR)
@@ -269,11 +277,22 @@ def escanear_qr(request, actividad_id):
         pk=actividad_id,
         organizador=request.user,
     )
+    asistencias = (
+        Asistencia.objects.filter(
+            inscripcion__in=_inscripciones_escaneables(actividad)
+        )
+        .select_related("inscripcion__participante")
+        .order_by("-fecha_registro")
+    )
 
     return render(
         request,
         "inscripciones/escanear_qr.html",
-        {"actividad": actividad},
+        {
+            "actividad": actividad,
+            "asistencias": asistencias,
+            **_resumen_asistencia(actividad),
+        },
     )
 
 
@@ -344,7 +363,7 @@ def validar_qr(request, actividad_id):
             # El bloque interno permite manejar la restricción OneToOne si dos
             # escaneos llegan casi simultáneamente. La BD es la última defensa.
             with transaction.atomic():
-                Asistencia.objects.create(
+                asistencia = Asistencia.objects.create(
                     inscripcion=inscripcion,
                     registrado_por=request.user,
                 )
@@ -360,6 +379,10 @@ def validar_qr(request, actividad_id):
             "mensaje": "Asistencia registrada correctamente.",
             "participante": inscripcion.participante.nombre_publico(),
             "actividad": actividad.nombre,
+            "fecha_registro": timezone.localtime(asistencia.fecha_registro).strftime(
+                "%d/%m/%Y %H:%M"
+            ),
+            **_resumen_asistencia(actividad),
         }
     )
 

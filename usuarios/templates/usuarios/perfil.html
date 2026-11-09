@@ -1,0 +1,35 @@
+{% extends "core/base.html" %}
+{% block titulo %}Mi perfil | SportSync{% endblock %}
+{% block contenido %}
+<section class="mx-auto max-w-3xl px-6 py-10">
+  <div class="rounded-3xl bg-white p-7 text-slate-900 shadow-xl sm:p-9">
+    <p class="text-sm font-bold uppercase tracking-wider text-cyan-700">Cuenta personal</p>
+    <h1 class="mt-1 text-3xl font-black">Mi perfil</h1>
+    <div class="mt-7 flex flex-col items-center gap-5 sm:flex-row">
+      {% if user.foto_perfil %}
+        <img src="{{ user.foto_perfil.url }}" alt="Foto de perfil" class="h-32 w-32 rounded-full border-4 border-cyan-100 object-cover">
+      {% else %}
+        <div class="flex h-32 w-32 items-center justify-center rounded-full bg-cyan-100 text-4xl font-black text-cyan-800">{{ user.first_name|default:user.email|first|upper }}</div>
+      {% endif %}
+      <div><h2 class="text-xl font-bold">{{ user.get_full_name|default:user.email }}</h2><p class="text-sm text-slate-500">{{ user.get_rol_display }}</p><p class="mt-1 text-sm text-slate-500">{{ user.email }}</p></div>
+    </div>
+    <div class="mt-8 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl bg-slate-50 p-4"><p class="text-xs font-bold uppercase text-slate-500">Nombre</p><p class="mt-1 font-semibold">{{ user.first_name|default:"No indicado" }}</p></div>
+      <div class="rounded-xl bg-slate-50 p-4"><p class="text-xs font-bold uppercase text-slate-500">Apellido</p><p class="mt-1 font-semibold">{{ user.last_name|default:"No indicado" }}</p></div>
+    </div>
+    <form method="post" enctype="multipart/form-data" class="mt-8 border-t border-slate-200 pt-6">
+      {% csrf_token %}
+      <h3 class="text-lg font-bold">Foto de perfil</h3>
+      <p class="mb-3 text-sm text-slate-500">Selecciona una imagen para actualizar tu foto.</p>
+      {{ form.foto_perfil }}
+      {% for error in form.foto_perfil.errors %}<p class="mt-2 text-sm text-red-600">{{ error }}</p>{% endfor %}
+      <button type="submit" class="mt-4 rounded-full bg-cyan-700 px-6 py-2.5 font-bold text-white hover:bg-cyan-800">Guardar foto</button>
+    </form>
+    <div class="mt-8 border-t border-slate-200 pt-6">
+      <h3 class="text-lg font-bold">Contraseña</h3>
+      <div class="mt-3 flex flex-wrap items-center gap-4"><span class="rounded-lg bg-slate-100 px-4 py-2 font-mono tracking-widest">••••••••••••</span><button type="button" disabled class="cursor-not-allowed rounded-full border border-slate-300 px-5 py-2.5 text-sm font-bold text-slate-400" title="Disponible próximamente">Cambiar contraseña</button></div>
+      <p class="mt-2 text-xs text-slate-500">La función para cambiar la contraseña se habilitará en una próxima etapa.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

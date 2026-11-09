@@ -5,6 +5,17 @@ from django.core.exceptions import ValidationError
 PAYPAL_API_URL = "https://api-m.sandbox.paypal.com"
 
 
+
+
+
+
+
+
+
+
+
+
+
 def obtener_token_paypal():
     client_id = getattr(settings, "PAYPAL_CLIENT_ID", "")
     client_secret = getattr(settings, "PAYPAL_CLIENT_SECRET", "")
@@ -22,6 +33,19 @@ def obtener_token_paypal():
         raise ValidationError("No se pudo autenticar con PayPal.")
 
     return response.json().get("access_token")
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def crear_orden_paypal(pago):
@@ -58,6 +82,33 @@ def crear_orden_paypal(pago):
     return data["id"]
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def capturar_orden_paypal(order_id, pago):
     access_token = obtener_token_paypal()
     headers = {
@@ -79,3 +130,64 @@ def capturar_orden_paypal(order_id, pago):
         return capture_id
     else:
         raise ValidationError("El pago en PayPal no fue completado.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def reembolsar_captura_paypal(pago):
+    """Solicita a PayPal el reembolso total de una captura."""
+    if not pago.paypal_capture_id:
+        raise ValidationError("El pago no tiene un ID de captura de PayPal.")
+
+    try:
+        access_token = obtener_token_paypal()
+        response = requests.post(
+            f"{PAYPAL_API_URL}/v2/payments/captures/"
+            f"{pago.paypal_capture_id}/refund",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {access_token}",
+                "PayPal-Request-Id": f"refund-{pago.paypal_capture_id}",
+            },
+            timeout=10,
+        )
+    except requests.RequestException as error:
+        raise ValidationError(
+            "No se pudo conectar con PayPal para procesar el reembolso."
+        ) from error
+
+    if response.status_code not in (200, 201):
+        raise ValidationError("PayPal no aceptó el reembolso.")
+
+    try:
+        data = response.json()
+    except ValueError as error:
+        raise ValidationError(
+            "PayPal devolvió una respuesta inválida al procesar el reembolso."
+        ) from error
+
+    if data.get("status") not in ("COMPLETED", "PENDING"):
+        raise ValidationError("PayPal no confirmó la solicitud de reembolso.")
+
+    return data

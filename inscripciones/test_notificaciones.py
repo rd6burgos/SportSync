@@ -3,6 +3,7 @@ from smtplib import SMTPException
 from unittest import mock
 
 from django.core import mail
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -10,7 +11,7 @@ from django.utils import timezone
 from actividades.models import Actividad
 from usuarios.models import Usuario
 
-from .models import Inscripcion, Notificacion
+from .models import Inscripcion, Notificacion, Pago
 from .notificaciones import enviar_notificacion
 
 
@@ -145,6 +146,51 @@ class NotificacionesTests(TestCase):
         self.cambiar_estado(actividad, "cancelada")
         self.assertEqual(self.destinatarios(), ["ana@example.com", "luis@example.com"])
         self.assertIn("Actividad cancelada", mail.outbox[0].subject)
+
+    def test_cancelar_actividad_reembolsa_pagos_paypal_aprobados(self):
+        actividad = self.actividad()
+        inscripcion = Inscripcion.objects.create(
+            participante=self.ana,
+            actividad=actividad,
+        )
+        pago = Pago.objects.create(
+            inscripcion=inscripcion,
+            monto="10.00",
+            estado=Pago.Estado.APROBADO,
+            metodo=Pago.Metodo.PAYPAL,
+            paypal_capture_id="capture-123",
+        )
+        with mock.patch("inscripciones.pagos.reembolsar_captura_paypal") as reembolso:
+            respuesta = self.cambiar_estado(actividad, "cancelada")
+
+        reembolso.assert_called_once_with(pago)
+        pago.refresh_from_db()
+        self.assertEqual(pago.estado, Pago.Estado.CANCELADO)
+        self.assertContains(respuesta, "PayPal aceptó el reembolso de 1 pago(s)")
+
+    def test_fallo_de_reembolso_se_informa_y_no_cancela_el_pago(self):
+        actividad = self.actividad()
+        inscripcion = Inscripcion.objects.create(
+            participante=self.ana,
+            actividad=actividad,
+        )
+        pago = Pago.objects.create(
+            inscripcion=inscripcion,
+            monto="10.00",
+            estado=Pago.Estado.APROBADO,
+            metodo=Pago.Metodo.PAYPAL,
+            paypal_capture_id="capture-123",
+        )
+        with mock.patch(
+            "inscripciones.pagos.reembolsar_captura_paypal",
+            side_effect=ValidationError("PayPal no está disponible."),
+        ):
+            respuesta = self.cambiar_estado(actividad, "cancelada")
+
+        pago.refresh_from_db()
+        self.assertEqual(pago.estado, Pago.Estado.APROBADO)
+        self.assertContains(respuesta, "No se pudo reembolsar el pago de Ana")
+        self.assertContains(respuesta, "PayPal no está disponible.")
 
     def test_cerrar_inscripciones_no_envia_correos(self):
         actividad = self.actividad()

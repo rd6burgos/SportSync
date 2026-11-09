@@ -5,6 +5,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 
 from inscripciones.notificaciones import notificar_cambio_estado
+from inscripciones.pagos import reembolsar_pagos_paypal
 
 
 
@@ -181,6 +182,7 @@ def cambiar_estado_actividad(request, actividad_id):
     )
 
     nuevo_estado = request.POST.get("estado", "")
+    estado_anterior = actividad.estado
 
     try:
         actividad.cambiar_estado(nuevo_estado)
@@ -190,6 +192,22 @@ def cambiar_estado_actividad(request, actividad_id):
             messages.error(request, mensaje)
 
     else:
+        if (
+            estado_anterior != Actividad.Estado.CANCELADA
+            and actividad.estado == Actividad.Estado.CANCELADA
+        ):
+            reembolsados, fallidos = reembolsar_pagos_paypal(actividad)
+            if reembolsados:
+                messages.success(
+                    request,
+                    f"PayPal aceptó el reembolso de {reembolsados} pago(s).",
+                )
+            for fallo in fallidos:
+                messages.error(
+                    request,
+                    f"No se pudo reembolsar el pago de {fallo}",
+                )
+
         # CR-13: avisa por correo a los inscritos cuando corresponde.
         notificados = notificar_cambio_estado(actividad)
 

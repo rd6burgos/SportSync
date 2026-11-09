@@ -81,3 +81,18 @@ class SolicitudOrganizadorForm(forms.ModelForm):
                 ),
             }),
         }
+
+from django import forms
+from .models import Usuario
+
+
+class FotoPerfilForm(forms.ModelForm):
+    class Meta:
+        model = Usuario
+        fields = ["foto_perfil"]
+        widgets = {
+            "foto_perfil": forms.ClearableFileInput(attrs={
+                "accept": "image/*",
+                "class": "block w-full text-sm text-slate-700 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-100 file:px-4 file:py-2 file:font-semibold file:text-cyan-900 hover:file:bg-cyan-200",
+            }),
+        }

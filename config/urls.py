@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import path, include
 from core.views import inicio, acerca
 from django.contrib.auth import views as auth_views
+from django.conf import settings
+from django.conf.urls.static import static
 
 
 # agregar las rutas de las aplicaciones del proyecto
@@ -34,3 +36,5 @@ urlpatterns = [
     path("inscripciones/", include("inscripciones.urls")),
 
 ]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

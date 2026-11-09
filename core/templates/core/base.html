@@ -26,10 +26,7 @@
 
                 <!-- Círculo 1: perfil -->
                 {% if user.is_authenticated %}
-                    {% if user.rol == "administrador" %}{% url 'usuarios:panel_administrador' as url_perfil %}
-                    {% elif user.rol == "organizador" %}{% url 'actividades:panel_actividades_organizador' as url_perfil %}
-                    {% else %}{% url 'usuarios:panel_participante' as url_perfil %}
-                    {% endif %}
+                    {% url 'usuarios:perfil' as url_perfil %}
                 {% else %}
                     {% url 'usuarios:login' as url_perfil %}
                 {% endif %}
@@ -40,14 +37,20 @@
                     </svg>
                 </a>
 
-                <!-- Círculo 2: reservado para una función futura -->
-                <span title="Próximamente" aria-label="Próximamente" aria-disabled="true"
-                      class="flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-full border border-white/30 opacity-50">
+                <!-- Círculo 2: mis actividades -->
+                {% if user.is_authenticated %}
+                <a href="{% url 'actividades:mis_actividades' %}" title="Mis actividades" aria-label="Mis actividades"
+                      class="flex h-11 w-11 items-center justify-center rounded-full border border-white/60 transition hover:bg-white/10">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/>
                         <rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>
                     </svg>
+                </a>
+                {% else %}
+                <span title="Inicia sesión para ver tus actividades" aria-disabled="true" class="flex h-11 w-11 items-center justify-center rounded-full border border-white/30 opacity-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
                 </span>
+                {% endif %}
             </div>
 
             <!-- Acceso de usuarios -->
