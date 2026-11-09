@@ -42,7 +42,9 @@ INSTALLED_APPS = [
     'usuarios',
     'actividades',
     'inscripciones',
+    'torneos',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

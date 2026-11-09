@@ -34,6 +34,7 @@ urlpatterns = [
     # agregar las rutas de la aplicación actividades
     path("actividades/", include("actividades.urls")),
     path("inscripciones/", include("inscripciones.urls")),
+    path("torneos/", include("torneos.urls")),
 
 ]
 if settings.DEBUG:

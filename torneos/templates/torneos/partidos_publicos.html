@@ -1,0 +1,48 @@
+{% extends "core/base.html" %}
+
+{% block titulo %}Partidos | {{ torneo.nombre }}{% endblock %}
+
+{% block contenido %}
+<section class="mx-auto max-w-4xl px-6 py-12">
+    <div class="rounded-2xl bg-white p-6 text-slate-900 shadow-lg sm:p-8">
+
+        <a href="{% url 'actividades:detalle_publico' torneo.pk %}" class="font-semibold text-blue-700 hover:underline">
+            ← Volver al torneo
+        </a>
+
+        <h1 class="mt-4 break-words text-3xl font-bold">{{ torneo.nombre }}</h1>
+        <p class="mt-1 text-slate-600">Partidos y resultados · {{ torneo.get_estado_display }}</p>
+
+        {% for partido in partidos %}
+            <article class="mt-4 rounded-lg border border-slate-200 p-4">
+                <p class="text-sm text-slate-600">
+                    {% if partido.ronda %}<strong>{{ partido.ronda }}</strong> · {% endif %}
+                    {{ partido.fecha_hora|date:"d/m/Y H:i" }}
+                </p>
+
+                <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+                    <p class="break-words text-lg font-semibold
+                        {% if partido.estado == 'cancelado' %}text-slate-400 line-through{% endif %}">
+                        {{ partido.participante_a.nombre_publico }}
+                        <span class="font-normal text-slate-500">vs</span>
+                        {{ partido.participante_b.nombre_publico }}
+                    </p>
+
+                    {% if partido.estado == "jugado" %}
+                        <p class="text-2xl font-bold">{{ partido.marcador_a }} - {{ partido.marcador_b }}</p>
+                    {% else %}
+                        <span class="rounded-full px-3 py-1 text-sm font-semibold
+                            {% if partido.estado == 'cancelado' %}bg-slate-200 text-slate-700{% else %}bg-amber-100 text-amber-800{% endif %}">
+                            {{ partido.get_estado_display }}
+                        </span>
+                    {% endif %}
+                </div>
+            </article>
+        {% empty %}
+            <p class="mt-6 rounded-lg bg-slate-100 p-5 text-slate-600">
+                Todavía no hay partidos programados en este torneo.
+            </p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

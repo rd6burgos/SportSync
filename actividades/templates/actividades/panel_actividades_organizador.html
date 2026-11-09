@@ -84,6 +84,22 @@
                             </a>
                         {% endif %}
 
+
+
+
+                         {% if actividad.tipo == "torneo" %}
+                            {% if actividad.estado == "inscripcion_cerrada" or actividad.estado == "en_curso" or actividad.estado == "finalizada" %}
+                                <a href="{% url 'torneos:gestionar_partidos' actividad.id %}"
+                                   class="mb-3 mr-2 inline-block rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800">
+                                    Partidos y resultados
+                                </a>
+                            {% endif %}
+                        {% endif %}
+
+
+
+
+                        
                         <div class="flex flex-wrap gap-2">
                             {% for estado in actividad.transiciones_permitidas %}
                                 <form method="post"
