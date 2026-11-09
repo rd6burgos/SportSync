@@ -1,0 +1,129 @@
+{% extends "core/base.html" %}
+
+{% block titulo %}Escanear QR | SportSync{% endblock %}
+
+{% block contenido %}
+<section class="mx-auto max-w-3xl px-6 py-10">
+    <div class="rounded-2xl bg-white p-6 text-slate-900 shadow-lg md:p-8">
+        <div class="mb-6">
+            <p class="text-sm font-semibold uppercase tracking-wide text-emerald-700">Control de asistencia</p>
+            <h1 class="mt-1 text-2xl font-bold">Escanear código QR</h1>
+            <p class="mt-2 text-slate-600">Actividad: <strong>{{ actividad.nombre }}</strong></p>
+            <p class="mt-1 text-sm text-slate-500">El escaneo está habilitado únicamente mientras la actividad se encuentre en curso.</p>
+        </div>
+
+        {% if actividad.estado == "en_curso" %}
+            <div id="reader" class="mx-auto w-full max-w-xl overflow-hidden rounded-xl border border-slate-200"></div>
+            <div class="mt-4 flex flex-wrap gap-3">
+                <button id="btn-iniciar" type="button" class="rounded-lg bg-emerald-700 px-5 py-3 font-semibold text-white hover:bg-emerald-800">Iniciar cámara</button>
+                <button id="btn-detener" type="button" disabled class="rounded-lg border border-slate-300 px-5 py-3 font-semibold text-slate-700 disabled:opacity-40">Detener cámara</button>
+            </div>
+            <form id="csrf-form" class="hidden">{% csrf_token %}</form>
+            <div id="resultado" class="mt-5 hidden rounded-xl p-4" role="status" aria-live="polite"></div>
+            <p id="ayuda" class="mt-4 text-sm text-slate-500">Presiona «Iniciar cámara» y permite el acceso a la cámara del dispositivo. Si estás desde una computadora, también puedes usar una cámara web.</p>
+        {% else %}
+            <div class="rounded-lg bg-amber-50 p-4 text-amber-900">La actividad debe estar en estado «En curso» para registrar asistencia. Estado actual: {{ actividad.get_estado_display }}.</div>
+        {% endif %}
+
+        <div class="mt-7 border-t border-slate-200 pt-5">
+            <a href="{% url 'actividades:panel_actividades_organizador' %}" class="font-semibold text-blue-700 hover:underline">← Volver a mis actividades</a>
+        </div>
+    </div>
+</section>
+
+{% if actividad.estado == "en_curso" %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+(() => {
+    const urlValidacion = "{% url 'inscripciones:validar_qr' actividad.id %}";
+    const csrfToken = document.querySelector('#csrf-form [name=csrfmiddlewaretoken]').value;
+    const btnIniciar = document.getElementById('btn-iniciar');
+    const btnDetener = document.getElementById('btn-detener');
+    const resultado = document.getElementById('resultado');
+    const ayuda = document.getElementById('ayuda');
+    const lector = new Html5Qrcode('reader');
+    let camaraActiva = false;
+    let procesando = false;
+
+    function mostrarResultado(exito, mensaje, participante) {
+        resultado.className = 'mt-5 rounded-xl p-4 ' + (exito ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-900');
+        resultado.innerHTML = '';
+        const titulo = document.createElement('p');
+        titulo.className = 'font-bold';
+        titulo.textContent = exito ? '✓ Asistencia confirmada' : 'No se pudo registrar';
+        const detalle = document.createElement('p');
+        detalle.className = 'mt-1';
+        detalle.textContent = mensaje;
+        resultado.append(titulo, detalle);
+        if (participante) {
+            const nombre = document.createElement('p');
+            nombre.className = 'mt-2 font-semibold';
+            nombre.textContent = 'Participante: ' + participante;
+            resultado.append(nombre);
+        }
+        resultado.classList.remove('hidden');
+    }
+
+    async function detenerCamara() {
+        if (camaraActiva) {
+            try { await lector.stop(); } catch (error) { console.warn(error); }
+            camaraActiva = false;
+        }
+        btnIniciar.disabled = false;
+        btnDetener.disabled = true;
+    }
+
+    async function validarCodigo(token) {
+        if (procesando) return;
+        procesando = true;
+        await detenerCamara();
+        ayuda.textContent = 'Validando código con SportSync…';
+        try {
+            const datos = new URLSearchParams({token: token});
+            const respuesta = await fetch(urlValidacion, {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/x-www-form-urlencoded'},
+                body: datos.toString(),
+                credentials: 'same-origin'
+            });
+            const data = await respuesta.json();
+            mostrarResultado(data.ok, data.mensaje, data.participante);
+            ayuda.textContent = 'Para escanear otro participante, presiona «Iniciar cámara».';
+        } catch (error) {
+            mostrarResultado(false, 'No fue posible comunicarse con el servidor. Comprueba tu conexión e inténtalo nuevamente.');
+            ayuda.textContent = 'Puedes volver a iniciar la cámara para intentar nuevamente.';
+        } finally {
+            procesando = false;
+        }
+    }
+
+    btnIniciar.addEventListener('click', async () => {
+        if (camaraActiva) return;
+        resultado.classList.add('hidden');
+        btnIniciar.disabled = true;
+        try {
+            const camaras = await Html5Qrcode.getCameras();
+            if (!camaras || camaras.length === 0) {
+                throw new Error('No se encontró ninguna cámara disponible.');
+            }
+            const camaraPreferida = camaras.find(c => /back|rear|environment|trasera|posterior/i.test(c.label)) || camaras[0];
+            await lector.start(
+                camaraPreferida.id,
+                {fps: 10, qrbox: {width: 250, height: 250}},
+                (texto) => validarCodigo(texto),
+                () => {}
+            );
+            camaraActiva = true;
+            btnDetener.disabled = false;
+            ayuda.textContent = 'Cámara activa. Coloca el código QR dentro del recuadro.';
+        } catch (error) {
+            btnIniciar.disabled = false;
+            mostrarResultado(false, 'No se pudo iniciar la cámara. Verifica los permisos del navegador y que la página use HTTPS o localhost.');
+        }
+    });
+
+    btnDetener.addEventListener('click', detenerCamara);
+})();
+</script>
+{% endif %}
+{% endblock %}
