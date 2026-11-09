@@ -6,6 +6,8 @@ from . import views, vistas_publicas
 app_name = "actividades"
 
 urlpatterns = [
+    path("mis-actividades/", vistas_publicas.mis_actividades, name="mis_actividades"),
+    
     path( "mi-panel/", views.panel_actividades_organizador,name="panel_actividades_organizador",),
     path("crear/",views.crear_actividad, name="crear_actividad",),
     path(

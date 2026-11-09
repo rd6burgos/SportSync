@@ -4,6 +4,7 @@ from datetime import date, datetime, time, timedelta
 from urllib.parse import urlencode
 
 from django.shortcuts import get_object_or_404, render
+from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.views.decorators.http import require_safe
 
@@ -260,8 +261,19 @@ def calendario_publico(request):
 
 @require_safe
 def detalle_publico(request, actividad_id):
+    actividades_visibles = actividades_publicas()
+    if request.user.is_authenticated:
+        actividades_visibles = Actividad.objects.filter(
+            Q(estado__in=ESTADOS_PUBLICOS)
+            | Q(organizador=request.user)
+            | Q(
+                inscripciones__participante=request.user,
+                inscripciones__estado="confirmada",
+            )
+        ).distinct()
+
     actividad = get_object_or_404(
-        actividades_publicas(),
+        actividades_visibles,
         pk=actividad_id,
     )
 
@@ -288,7 +300,9 @@ def detalle_publico(request, actividad_id):
     # aunque esté en curso o tenga cerradas las inscripciones, el participante
     # debe poder consultar su inscripción y su QR. Esto NO habilita nuevas
     # inscripciones; esa posibilidad sigue limitada al estado PUBLICADA.
-    if not request.user.is_authenticated:
+    if actividad.estado == Actividad.Estado.CANCELADA:
+        accion = "organizador" if actividad.organizador_id == request.user.pk else "cerrada"
+    elif not request.user.is_authenticated:
         accion = "anonimo" if actividad.estado == Actividad.Estado.PUBLICADA else "cerrada"
     elif actividad.organizador_id == request.user.pk:
         accion = "organizador"
@@ -381,3 +395,63 @@ def catalogo(request):
             "total": sum(len(g["actividades"]) for g in grupos_ordenados),
         },
     )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@login_required
+@require_safe
+def mis_actividades(request):
+    from inscripciones.models import Inscripcion
+
+    seccion = request.GET.get("seccion", "en_curso")
+    if seccion not in {"en_curso", "organizadas", "historicas"}:
+        seccion = "en_curso"
+
+    inscripciones = Inscripcion.objects.filter(
+        participante=request.user, estado=Inscripcion.Estado.CONFIRMADA
+    )
+    participadas = Actividad.objects.filter(inscripciones__in=inscripciones).distinct()
+
+    if seccion == "en_curso":
+        actividades = participadas.filter(estado=Actividad.Estado.EN_CURSO)
+        titulo = "Actividades en curso"
+    elif seccion == "organizadas":
+        actividades = Actividad.objects.filter(organizador=request.user)
+        titulo = "Mis actividades como organizador"
+    else:
+        from django.db.models import Q
+        actividades = Actividad.objects.filter(
+            Q(organizador=request.user) | Q(inscripciones__in=inscripciones),
+            estado__in=(Actividad.Estado.FINALIZADA, Actividad.Estado.CANCELADA),
+        ).distinct()
+        titulo = "Actividades finalizadas o canceladas"
+
+    actividades = actividades.select_related("organizador").order_by("-fecha_inicio")
+    return render(request, "actividades/mis_actividades.html", {
+        "actividades": actividades, "seccion": seccion, "titulo": titulo,
+    })

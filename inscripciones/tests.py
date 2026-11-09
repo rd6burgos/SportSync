@@ -46,17 +46,6 @@ class ValidacionInscripcionTests(TestCase):
         self.client.force_login(usuario)
         return self.client.post(
             reverse("inscripciones:inscribirse", args=[actividad.pk]), follow=True
-
-
-
-
-
-
-
-
-
-
-            
         )
 
     # --- Regla de solapamiento -------------------------------------------
@@ -104,16 +93,6 @@ class ValidacionInscripcionTests(TestCase):
         self.inscribir(self.ana, a)
         self.assertIsNone(conflicto_de_horario(self.ana, b))
 
-
-
-
-
-
-
-
-
-
-
     # --- Qué inscripciones cuentan ---------------------------------------
 
     def test_inscripcion_cancelada_no_genera_conflicto(self):
@@ -153,16 +132,6 @@ class ValidacionInscripcionTests(TestCase):
             1,
         )
 
-
-
-
-
-
-
-
-
-
-
     # --- Duplicados ------------------------------------------------------
 
     def test_duplicado_se_rechaza_y_no_crea_otra_fila(self):
@@ -188,29 +157,6 @@ class ValidacionInscripcionTests(TestCase):
         self.inscribir(self.luis, b)
         respuesta = self.intentar(self.ana, b)
         self.assertContains(respuesta, "el horario choca")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 class EscaneoQRTests(TestCase):
 
@@ -247,8 +193,48 @@ class EscaneoQRTests(TestCase):
     def test_qr_valido_registra_asistencia(self):
         respuesta = self.client.post(self.url, {"token": str(self.inscripcion.qr_token)})
         self.assertEqual(respuesta.status_code, 200)
-        self.assertTrue(respuesta.json()["ok"])
+        datos = respuesta.json()
+        self.assertTrue(datos["ok"])
+        self.assertEqual(datos["total_participantes"], 1)
+        self.assertEqual(datos["participantes_validados"], 1)
+        self.assertEqual(datos["participantes_pendientes"], 0)
+        self.assertTrue(datos["fecha_registro"])
         self.assertTrue(Asistencia.objects.filter(inscripcion=self.inscripcion).exists())
+
+    def test_pantalla_muestra_asistencias_y_participantes_pendientes(self):
+        otro_participante = Usuario.objects.create_user(
+            "otro-participante-qr@example.com", "clave-segura-123"
+        )
+        otra_inscripcion = Inscripcion.objects.create(
+            participante=otro_participante,
+            actividad=self.actividad,
+            estado=Inscripcion.Estado.CONFIRMADA,
+        )
+        participante_pago_pendiente = Usuario.objects.create_user(
+            "pago-pendiente-qr@example.com", "clave-segura-123"
+        )
+        inscripcion_pago_pendiente = Inscripcion.objects.create(
+            participante=participante_pago_pendiente,
+            actividad=self.actividad,
+            estado=Inscripcion.Estado.CONFIRMADA,
+        )
+        Pago.objects.create(inscripcion=inscripcion_pago_pendiente, monto="10.00")
+        Asistencia.objects.create(
+            inscripcion=self.inscripcion,
+            registrado_por=self.organizador,
+        )
+
+        respuesta = self.client.get(
+            reverse("inscripciones:escanear_qr", args=[self.actividad.pk])
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta.context["total_participantes"], 2)
+        self.assertEqual(respuesta.context["participantes_validados"], 1)
+        self.assertEqual(respuesta.context["participantes_pendientes"], 1)
+        self.assertContains(respuesta, self.participante.nombre_publico())
+        self.assertNotContains(respuesta, otra_inscripcion.participante.nombre_publico())
+        self.assertNotContains(respuesta, participante_pago_pendiente.nombre_publico())
 
     def test_qr_no_puede_usarse_dos_veces(self):
         self.client.post(self.url, {"token": str(self.inscripcion.qr_token)})

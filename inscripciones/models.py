@@ -275,21 +275,6 @@ class Notificacion(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_display()} → {self.correo} ({self.get_estado_display()})"
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -11,6 +11,7 @@ from .notificaciones import (
     notificar_pago_rechazado,
     notificar_promocion,
 )
+from .services_paypal import reembolsar_captura_paypal
 
 
 # Estados que el organizador puede asignar a un pago en persona.
@@ -52,6 +53,33 @@ def cancelar_pago(inscripcion):
             Pago.Estado.APROBADO,
         ),
     ).update(estado=Pago.Estado.CANCELADO)
+
+
+def reembolsar_pagos_paypal(actividad):
+    """Reembolsa los pagos PayPal aprobados de una actividad cancelada."""
+    pagos = Pago.objects.filter(
+        inscripcion__actividad=actividad,
+        metodo=Pago.Metodo.PAYPAL,
+        estado=Pago.Estado.APROBADO,
+    ).select_related("inscripcion__participante")
+
+    reembolsados = 0
+    fallidos = []
+    for pago in pagos:
+        try:
+            reembolsar_captura_paypal(pago)
+        except ValidationError as error:
+            fallidos.append(
+                f"{pago.inscripcion.participante.nombre_publico()}: "
+                f"{'; '.join(error.messages)}"
+            )
+            continue
+
+        pago.estado = Pago.Estado.CANCELADO
+        pago.save(update_fields=["estado"])
+        reembolsados += 1
+
+    return reembolsados, fallidos
 
 
 def resolver_pago(pago_id, nuevo_estado, revisor):

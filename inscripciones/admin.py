@@ -59,16 +59,7 @@ class PagoAdmin(admin.ModelAdmin):
     )
 
     def has_add_permission(self, request):
-        
         return False
-
-
-
-
-
-
-
-    
 
 @admin.register(Asistencia)
 class AsistenciaAdmin(admin.ModelAdmin):

@@ -5,6 +5,7 @@ from . import views
 app_name = "usuarios"
 
 urlpatterns = [
+    path("perfil/", views.perfil, name="perfil"),
     path("registro/", views.registro, name="registro"),
     path("registro-exitoso/", views.registro_exitoso, name="registro_exitoso"),
     path("login/", auth_views.LoginView.as_view(template_name="usuarios/login.html"), name="login"),
