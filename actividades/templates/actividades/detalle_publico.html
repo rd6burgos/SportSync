@@ -6,10 +6,22 @@
 <section class="mx-auto max-w-4xl px-6 py-12">
     <article class="rounded-2xl bg-white p-6 text-slate-900 shadow-lg sm:p-8">
 
-        <a href="{% url 'actividades:calendario_publico' %}?{{ consulta_calendario }}"
-           class="font-semibold text-blue-700 hover:underline">
-            ← Volver al calendario
-        </a>
+        <nav class="flex flex-wrap gap-2" aria-label="Navegación de actividades">
+            <a href="{% url 'actividades:calendario_publico' %}?{{ consulta_calendario }}"
+               class="rounded-full border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
+                ← Volver al calendario
+            </a>
+            <a href="{% url 'actividades:catalogo' %}"
+               class="rounded-full border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
+                Volver al catálogo
+            </a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'actividades:mis_actividades' %}"
+                   class="rounded-full border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
+                    Mis actividades
+                </a>
+            {% endif %}
+        </nav>
 
         <div class="mt-6">
             <span class="inline-block rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800">
@@ -150,9 +162,25 @@
                 </form>
             </div>
         {% elif accion == "organizador" %}
-            <p class="mt-6 rounded-lg bg-slate-100 p-4 text-slate-700">
-                Eres el organizador de esta actividad.
-            </p>
+            <section class="mt-6 rounded-xl border border-cyan-100 bg-cyan-50 p-5" aria-labelledby="gestion-actividad">
+                <h2 id="gestion-actividad" class="text-lg font-bold text-slate-900">Gestionar actividad</h2>
+                <p class="mt-1 text-slate-700">Eres el organizador de esta actividad. Accede a las herramientas de asistencia y pagos.</p>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    {% if actividad.estado == "en_curso" %}
+                        <a href="{% url 'inscripciones:escanear_qr' actividad.pk %}"
+                           class="inline-flex items-center rounded-full bg-emerald-700 px-5 py-2.5 font-bold text-white transition hover:bg-emerald-800">
+                            Escanear QR
+                        </a>
+                    {% endif %}
+                    <a href="{% url 'inscripciones:panel_pagos' %}"
+                       class="inline-flex items-center rounded-full bg-blue-700 px-5 py-2.5 font-bold text-white transition hover:bg-blue-800">
+                        Gestionar pagos
+                    </a>
+                </div>
+                {% if actividad.estado != "en_curso" %}
+                    <p class="mt-3 text-sm text-slate-600">El escaneo de QR estará disponible cuando la actividad esté en curso.</p>
+                {% endif %}
+            </section>
         {% endif %}
 
 

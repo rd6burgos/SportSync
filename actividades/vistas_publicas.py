@@ -428,30 +428,75 @@ def catalogo(request):
 def mis_actividades(request):
     from inscripciones.models import Inscripcion
 
-    seccion = request.GET.get("seccion", "en_curso")
-    if seccion not in {"en_curso", "organizadas", "historicas"}:
-        seccion = "en_curso"
+    vista = request.GET.get("vista", "inscritas")
+    if vista not in {"inscritas", "organizadas"}:
+        vista = "inscritas"
+
+    # Conserva los enlaces anteriores mientras la página usa las nuevas pestañas.
+    seccion_anterior = request.GET.get("seccion")
+    if not request.GET.get("vista") and seccion_anterior in {
+        "organizadas",
+        "historicas",
+    }:
+        vista = "organizadas"
 
     inscripciones = Inscripcion.objects.filter(
         participante=request.user, estado=Inscripcion.Estado.CONFIRMADA
     )
     participadas = Actividad.objects.filter(inscripciones__in=inscripciones).distinct()
 
-    if seccion == "en_curso":
-        actividades = participadas.filter(estado=Actividad.Estado.EN_CURSO)
-        titulo = "Actividades en curso"
-    elif seccion == "organizadas":
+    if vista == "organizadas":
         actividades = Actividad.objects.filter(organizador=request.user)
-        titulo = "Mis actividades como organizador"
+        titulo = "Actividades creadas por mí"
+        definiciones_grupos = (
+            ("En curso", (Actividad.Estado.EN_CURSO,)),
+            (
+                "Próximas",
+                (
+                    Actividad.Estado.BORRADOR,
+                    Actividad.Estado.PUBLICADA,
+                    Actividad.Estado.INSCRIPCION_CERRADA,
+                ),
+            ),
+            ("Canceladas", (Actividad.Estado.CANCELADA,)),
+            ("Finalizadas", (Actividad.Estado.FINALIZADA,)),
+        )
     else:
-        from django.db.models import Q
-        actividades = Actividad.objects.filter(
-            Q(organizador=request.user) | Q(inscripciones__in=inscripciones),
-            estado__in=(Actividad.Estado.FINALIZADA, Actividad.Estado.CANCELADA),
-        ).distinct()
-        titulo = "Actividades finalizadas o canceladas"
+        definiciones_grupos = (
+            ("En curso", (Actividad.Estado.EN_CURSO,)),
+            (
+                "Inscrito",
+                (
+                    Actividad.Estado.PUBLICADA,
+                    Actividad.Estado.INSCRIPCION_CERRADA,
+                ),
+            ),
+            ("Canceladas", (Actividad.Estado.CANCELADA,)),
+            ("Finalizadas", (Actividad.Estado.FINALIZADA,)),
+        )
+        titulo = "Actividades en las que estoy inscrito"
+        actividades = participadas.select_related("organizador").order_by(
+            "-fecha_inicio"
+        )
 
-    actividades = actividades.select_related("organizador").order_by("-fecha_inicio")
+    base_actividades = (
+        actividades if vista == "organizadas" else participadas
+    )
+    grupos = []
+    for titulo_grupo, estados in definiciones_grupos:
+        grupo_actividades = (
+            base_actividades.filter(estado__in=estados)
+            .select_related("organizador")
+            .order_by("-fecha_inicio")
+        )
+        grupos.append({
+            "titulo": titulo_grupo,
+            "actividades": grupo_actividades,
+        })
+
     return render(request, "actividades/mis_actividades.html", {
-        "actividades": actividades, "seccion": seccion, "titulo": titulo,
+        "actividades": actividades,
+        "grupos": grupos,
+        "vista": vista,
+        "titulo": titulo,
     })
