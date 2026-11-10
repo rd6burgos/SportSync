@@ -19,6 +19,20 @@ class PaginaInicioTests(TestCase):
         self.assertContains(respuesta, "¿Aún no tienes cuenta?")
         self.assertContains(respuesta, "Crear mi cuenta")
         self.assertContains(respuesta, reverse("usuarios:registro"))
+        self.assertContains(respuesta, 'id="carrusel-inicio"')
+        self.assertContains(respuesta, 'aria-roledescription="diapositiva"', count=5)
+        self.assertContains(respuesta, "wooden-basketball-court-3840x2160-17426.jpg")
+        self.assertContains(respuesta, "roger-federer-tennis-player-swiss-player-5k-8k-3840x2160-1801.jpg")
+        self.assertContains(respuesta, "paris-summer-3840x2160-13553.jpg")
+        self.assertContains(respuesta, "lamine-yamal-fifa-3840x2160-27561.jpg")
+        self.assertContains(respuesta, "brazil-football-3840x2160-17323.jpg")
+        self.assertContains(respuesta, 'data-carrusel-anterior')
+        self.assertContains(respuesta, 'data-carrusel-siguiente')
+        self.assertContains(respuesta, "prefers-reduced-motion")
+        self.assertContains(respuesta, "650ms")
+        html = respuesta.content.decode()
+        self.assertLess(html.index('id="carrusel-inicio"'), html.index("Entrena."))
+        self.assertContains(respuesta, "object-contain")
 
     def test_usuario_con_sesion_no_ve_invitacion_a_crear_cuenta(self):
         from usuarios.models import Usuario
