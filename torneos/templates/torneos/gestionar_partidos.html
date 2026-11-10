@@ -177,6 +177,145 @@
         {% empty %}
             <p class="rounded-lg bg-slate-100 p-5 text-slate-600">Todavía no hay partidos programados.</p>
         {% endfor %}
+
+        <section class="mt-10 border-t border-slate-200 pt-8">
+            <h2 class="text-2xl font-bold">Formato por equipos</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                Asigna participantes inscritos a equipos. Un participante solo puede pertenecer a un equipo de este torneo.
+            </p>
+
+            {% if puede_programar %}
+                <div class="mt-5 rounded-xl bg-slate-50 p-5">
+                    <h3 class="text-lg font-semibold">Crear un equipo</h3>
+                    <form method="post" action="{% url 'torneos:guardar_equipo' torneo.pk %}" class="mt-4 grid gap-4 sm:grid-cols-2">
+                        {% csrf_token %}
+                        <div>
+                            <label for="{{ equipo_form.nombre.id_for_label }}" class="mb-1 block text-sm font-semibold">{{ equipo_form.nombre.label }}</label>
+                            {{ equipo_form.nombre }}
+                            {% for error in equipo_form.nombre.errors %}<p class="mt-1 text-sm text-red-700">{{ error }}</p>{% endfor %}
+                        </div>
+                        <div>
+                            <label for="{{ equipo_form.integrantes.id_for_label }}" class="mb-1 block text-sm font-semibold">{{ equipo_form.integrantes.label }}</label>
+                            {{ equipo_form.integrantes }}
+                            <p class="mt-1 text-xs text-slate-500">{{ equipo_form.integrantes.help_text }}</p>
+                            {% for error in equipo_form.integrantes.errors %}<p class="mt-1 text-sm text-red-700">{{ error }}</p>{% endfor %}
+                        </div>
+                        {% for error in equipo_form.non_field_errors %}<p class="sm:col-span-2 text-sm text-red-700">{{ error }}</p>{% endfor %}
+                        <button type="submit" class="justify-self-start rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800">Crear equipo</button>
+                    </form>
+                </div>
+            {% endif %}
+
+            <h3 class="mt-7 text-xl font-semibold">Equipos del torneo</h3>
+            {% for elemento in equipos %}
+                <article class="mt-4 rounded-lg border border-slate-200 p-5">
+                    <h4 class="text-lg font-bold">{{ elemento.equipo.nombre }}</h4>
+                    <p class="mt-2 text-sm font-semibold text-slate-700">Integrantes actuales</p>
+                    <ul class="mt-1 flex flex-wrap gap-2">
+                        {% for integrante in elemento.equipo.integrantes.all %}
+                            <li class="rounded-full bg-cyan-100 px-3 py-1 text-sm text-cyan-900">{{ integrante.nombre_publico }}</li>
+                        {% empty %}
+                            <li class="text-sm text-slate-500">Sin integrantes.</li>
+                        {% endfor %}
+                    </ul>
+                    {% if puede_programar %}
+                        <details class="mt-4" {% if elemento.equipo.pk == editar_equipo_id %}open{% endif %}>
+                            <summary class="cursor-pointer font-semibold text-blue-700">Editar equipo e integrantes</summary>
+                            <form method="post" action="{% url 'torneos:guardar_equipo' torneo.pk %}" class="mt-4 grid gap-4 sm:grid-cols-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="equipo_id" value="{{ elemento.equipo.pk }}">
+                                <div>
+                                    <label for="{{ elemento.form.nombre.id_for_label }}" class="mb-1 block text-sm font-semibold">{{ elemento.form.nombre.label }}</label>
+                                    {{ elemento.form.nombre }}
+                                    {% for error in elemento.form.nombre.errors %}<p class="mt-1 text-sm text-red-700">{{ error }}</p>{% endfor %}
+                                </div>
+                                <div>
+                                    <label for="{{ elemento.form.integrantes.id_for_label }}" class="mb-1 block text-sm font-semibold">{{ elemento.form.integrantes.label }}</label>
+                                    {{ elemento.form.integrantes }}
+                                    <p class="mt-1 text-xs text-slate-500">{{ elemento.form.integrantes.help_text }}</p>
+                                    {% for error in elemento.form.integrantes.errors %}<p class="mt-1 text-sm text-red-700">{{ error }}</p>{% endfor %}
+                                </div>
+                                {% for error in elemento.form.non_field_errors %}<p class="sm:col-span-2 text-sm text-red-700">{{ error }}</p>{% endfor %}
+                                <button type="submit" class="justify-self-start rounded-lg border border-blue-700 px-5 py-3 font-semibold text-blue-700 hover:bg-blue-50">Guardar cambios</button>
+                            </form>
+                        </details>
+                    {% endif %}
+                </article>
+            {% empty %}
+                <p class="mt-3 rounded-lg bg-slate-100 p-4 text-slate-600">Todavía no hay equipos en este torneo.</p>
+            {% endfor %}
+        </section>
+
+        <section class="mt-10 border-t border-slate-200 pt-8">
+            <h2 class="text-2xl font-bold">Partidos entre equipos</h2>
+            {% if puede_programar %}
+                <div class="mt-5 rounded-xl bg-slate-50 p-5">
+                    <h3 class="text-lg font-semibold">Programar partido de equipos</h3>
+                    {% if partido_equipo_form.non_field_errors %}
+                        <div class="mt-3 rounded-lg bg-red-50 p-4 text-red-900">
+                            {% for error in partido_equipo_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                        </div>
+                    {% endif %}
+                    {% if equipos|length < 2 %}
+                        <p class="mt-3 text-slate-600">Crea al menos dos equipos para programar un partido.</p>
+                    {% else %}
+                        <form method="post" action="{% url 'torneos:crear_partido_equipo' torneo.pk %}" class="mt-4 grid gap-4 sm:grid-cols-2">
+                            {% csrf_token %}
+                            {% for campo in partido_equipo_form %}
+                                <div>
+                                    <label for="{{ campo.id_for_label }}" class="mb-1 block text-sm font-semibold">{{ campo.label }}</label>
+                                    {{ campo }}
+                                    {% for error in campo.errors %}<p class="mt-1 text-sm text-red-700">{{ error }}</p>{% endfor %}
+                                </div>
+                            {% endfor %}
+                            <button type="submit" class="justify-self-start rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800">Programar partido entre equipos</button>
+                        </form>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            {% for partido in partidos_equipos %}
+                <article class="mt-4 rounded-lg border border-slate-200 p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p class="text-sm text-slate-600">
+                                {% if partido.ronda %}<strong>{{ partido.ronda }}</strong> · {% endif %}
+                                {{ partido.fecha_hora|date:"d/m/Y H:i" }}
+                            </p>
+                            <h3 class="mt-1 text-lg font-semibold">{{ partido.equipo_a.nombre }} <span class="text-slate-500">vs</span> {{ partido.equipo_b.nombre }}</h3>
+                        </div>
+                        <div class="text-right">
+                            {% if partido.estado == "jugado" %}<p class="text-2xl font-bold">{{ partido.marcador_a }} - {{ partido.marcador_b }}</p>{% endif %}
+                            <span class="inline-block rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold">{{ partido.get_estado_display }}</span>
+                        </div>
+                    </div>
+                    {% if puede_registrar and partido.estado != "cancelado" %}
+                        <form method="post" action="{% url 'torneos:registrar_resultado_equipo' partido.pk %}" class="mt-4 flex flex-wrap items-end gap-3">
+                            {% csrf_token %}
+                            <div>
+                                <label for="equipo-a-{{ partido.pk }}" class="block text-xs font-semibold">{{ partido.equipo_a.nombre }}</label>
+                                <input id="equipo-a-{{ partido.pk }}" type="number" name="marcador_a" min="0" max="999" required value="{{ partido.marcador_a|default_if_none:'' }}" class="w-24 rounded-lg border border-slate-300 px-3 py-2">
+                            </div>
+                            <div>
+                                <label for="equipo-b-{{ partido.pk }}" class="block text-xs font-semibold">{{ partido.equipo_b.nombre }}</label>
+                                <input id="equipo-b-{{ partido.pk }}" type="number" name="marcador_b" min="0" max="999" required value="{{ partido.marcador_b|default_if_none:'' }}" class="w-24 rounded-lg border border-slate-300 px-3 py-2">
+                            </div>
+                            <button type="submit" class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
+                                {% if partido.estado == "jugado" %}Corregir resultado{% else %}Guardar resultado{% endif %}
+                            </button>
+                        </form>
+                    {% endif %}
+                    {% if puede_programar and partido.estado == "programado" %}
+                        <form method="post" action="{% url 'torneos:cancelar_partido_equipo' partido.pk %}" class="mt-3" onsubmit="return confirm('¿Cancelar este partido entre equipos?');">
+                            {% csrf_token %}
+                            <button type="submit" class="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Cancelar partido</button>
+                        </form>
+                    {% endif %}
+                </article>
+            {% empty %}
+                <p class="mt-3 rounded-lg bg-slate-100 p-4 text-slate-600">Todavía no hay partidos entre equipos.</p>
+            {% endfor %}
+        </section>
     </div>
 </section>
 {% endblock %}

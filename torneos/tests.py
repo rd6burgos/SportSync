@@ -11,12 +11,16 @@ from actividades.models import Actividad
 from inscripciones.models import Inscripcion, Pago
 from usuarios.models import Usuario
 
-from .models import Partido
+from .models import Equipo, Partido, PartidoEquipo
 from .servicios import (
     cancelar_partido,
     crear_partido,
+    crear_partido_equipo,
+    guardar_equipo,
     participantes_validos,
     registrar_resultado,
+    registrar_resultado_equipo,
+    tabla_posiciones_equipos,
 )
 
 # Un cifrado de contraseñas más rápido solo para las pruebas.
@@ -386,3 +390,202 @@ class VistasTests(BaseTorneoTests):
         self.client.force_login(self.organizador)
         r = self.client.get(reverse("actividades:panel_actividades_organizador"))
         self.assertContains(r, self.url("gestionar_partidos", self.torneo.pk))
+
+
+class EquiposTorneoTests(BaseTorneoTests):
+
+    def crear_equipo(self, nombre, integrantes):
+        return guardar_equipo(
+            self.torneo.pk,
+            self.organizador,
+            nombre,
+            integrantes,
+        )
+
+    def setUp(self):
+        super().setUp()
+        self.azul = self.crear_equipo("Azul", [self.ana])
+        self.rojo = self.crear_equipo("Rojo", [self.luis])
+        self.verde = self.crear_equipo("Verde", [self.maria])
+
+    def test_participante_no_puede_asignarse_a_dos_equipos(self):
+        with self.assertRaisesMessage(ValidationError, "solo puede pertenecer"):
+            self.crear_equipo("Amarillo", [self.ana])
+
+    def test_no_se_aceptan_equipos_repetidos_en_el_mismo_torneo(self):
+        with self.assertRaisesMessage(ValidationError, "Ya existe un equipo"):
+            self.crear_equipo("azul", [self.maria])
+
+    def test_partido_de_equipos_exige_dos_equipos_del_mismo_torneo(self):
+        with self.assertRaisesMessage(ValidationError, "no puede jugar contra sí mismo"):
+            crear_partido_equipo(
+                self.torneo.pk,
+                self.organizador,
+                self.azul,
+                self.azul,
+                self.cuando,
+            )
+
+        otro_torneo = self.crear_torneo()
+        Inscripcion.objects.create(participante=self.nora, actividad=otro_torneo)
+        equipo_ajeno = guardar_equipo(
+            otro_torneo.pk, self.organizador, "Visitante", [self.nora]
+        )
+        with self.assertRaisesMessage(ValidationError, "pertenecer a este torneo"):
+            crear_partido_equipo(
+                self.torneo.pk,
+                self.organizador,
+                self.azul,
+                equipo_ajeno,
+                self.cuando,
+            )
+
+    def test_cambiar_plantilla_de_equipo_con_partidos_jugados_se_rechaza(self):
+        self.poner_estado("en_curso")
+        partido = crear_partido_equipo(
+            self.torneo.pk,
+            self.organizador,
+            self.azul,
+            self.rojo,
+            self.cuando,
+        )
+        registrar_resultado_equipo(partido.pk, 2, 0, self.organizador)
+
+        with self.assertRaisesMessage(ValidationError, "ya tiene partidos jugados"):
+            guardar_equipo(
+                self.torneo.pk,
+                self.organizador,
+                "Azul",
+                [self.maria],
+                equipo_id=self.azul.pk,
+            )
+
+    def test_tabla_se_recalcula_al_corregir_resultado(self):
+        self.poner_estado("en_curso")
+        partido = crear_partido_equipo(
+            self.torneo.pk,
+            self.organizador,
+            self.azul,
+            self.rojo,
+            self.cuando,
+        )
+        registrar_resultado_equipo(partido.pk, 3, 1, self.organizador)
+
+        tabla = tabla_posiciones_equipos(self.torneo)
+        self.assertEqual(tabla[0]["equipo"], self.azul)
+        self.assertEqual(tabla[0]["ganados"], 1)
+        self.assertEqual(tabla[0]["diferencia_goles"], 2)
+
+        registrar_resultado_equipo(partido.pk, 0, 2, self.organizador)
+        tabla = tabla_posiciones_equipos(self.torneo)
+        self.assertEqual(tabla[0]["equipo"], self.rojo)
+        self.assertEqual(tabla[0]["ganados"], 1)
+        self.assertEqual(tabla[1]["equipo"], self.verde)
+        self.assertEqual(tabla[2]["equipo"], self.azul)
+        self.assertEqual(tabla[2]["perdidos"], 1)
+
+    def test_empate_no_suma_victorias_y_cuenta_goles(self):
+        self.poner_estado("en_curso")
+        partido = crear_partido_equipo(
+            self.torneo.pk,
+            self.organizador,
+            self.azul,
+            self.rojo,
+            self.cuando,
+        )
+        registrar_resultado_equipo(partido.pk, 2, 2, self.organizador)
+
+        filas = {
+            fila["equipo"].pk: fila
+            for fila in tabla_posiciones_equipos(self.torneo)
+        }
+        self.assertEqual(filas[self.azul.pk]["ganados"], 0)
+        self.assertEqual(filas[self.azul.pk]["empatados"], 1)
+        self.assertEqual(filas[self.azul.pk]["goles_favor"], 2)
+        self.assertEqual(filas[self.rojo.pk]["empatados"], 1)
+
+
+class VistasEquiposTests(BaseTorneoTests):
+
+    def url(self, nombre, *args):
+        return reverse(f"torneos:{nombre}", args=args)
+
+    def test_pagina_de_gestion_incluye_opcion_de_equipos_sin_quitar_individual(self):
+        self.client.force_login(self.organizador)
+
+        respuesta = self.client.get(self.url("gestionar_partidos", self.torneo.pk))
+
+        self.assertContains(respuesta, "Programar un partido")
+        self.assertContains(respuesta, "Crear un equipo")
+        self.assertContains(respuesta, "Participante A")
+
+    def test_crear_equipos_programar_y_registrar_resultado(self):
+        self.client.force_login(self.organizador)
+        url_gestion = self.url("gestionar_partidos", self.torneo.pk)
+        respuesta = self.client.post(
+            self.url("guardar_equipo", self.torneo.pk),
+            {"nombre": "Azul", "integrantes": [self.ana.pk]},
+            follow=True,
+        )
+        self.assertContains(respuesta, "Equipo creado.")
+        equipo_a = Equipo.objects.get(torneo=self.torneo, nombre="Azul")
+
+        self.client.post(
+            self.url("guardar_equipo", self.torneo.pk),
+            {"nombre": "Rojo", "integrantes": [self.luis.pk]},
+            follow=True,
+        )
+        equipo_b = Equipo.objects.get(torneo=self.torneo, nombre="Rojo")
+        respuesta = self.client.post(
+            self.url("crear_partido_equipo", self.torneo.pk),
+            {
+                "equipo_a": equipo_a.pk,
+                "equipo_b": equipo_b.pk,
+                "fecha_hora": timezone.localtime(self.cuando).strftime(
+                    "%Y-%m-%dT%H:%M"
+                ),
+                "ronda": "Final",
+            },
+            follow=True,
+        )
+        self.assertContains(respuesta, "Partido entre equipos programado.")
+        partido = PartidoEquipo.objects.get(torneo=self.torneo)
+
+        self.poner_estado("en_curso")
+        respuesta = self.client.post(
+            self.url("registrar_resultado_equipo", partido.pk),
+            {"marcador_a": "4", "marcador_b": "2"},
+            follow=True,
+        )
+        self.assertContains(respuesta, "Resultado de equipos guardado.")
+        partido.refresh_from_db()
+        self.assertEqual((partido.marcador_a, partido.marcador_b), (4, 2))
+        self.assertEqual(
+            self.client.get(url_gestion).status_code,
+            200,
+        )
+
+    def test_pagina_publica_muestra_tabla_y_plantillas_de_equipos(self):
+        equipo_a = guardar_equipo(
+            self.torneo.pk, self.organizador, "Azul", [self.ana]
+        )
+        equipo_b = guardar_equipo(
+            self.torneo.pk, self.organizador, "Rojo", [self.luis]
+        )
+        self.poner_estado("en_curso")
+        partido = crear_partido_equipo(
+            self.torneo.pk,
+            self.organizador,
+            equipo_a,
+            equipo_b,
+            self.cuando,
+        )
+        registrar_resultado_equipo(partido.pk, 2, 1, self.organizador)
+
+        respuesta = self.client.get(self.url("partidos_publicos", self.torneo.pk))
+
+        self.assertContains(respuesta, "Tabla de posiciones por equipos")
+        self.assertContains(respuesta, "Azul")
+        self.assertContains(respuesta, "Ana")
+        self.assertContains(respuesta, "2 - 1")
+        self.assertContains(respuesta, "Partidos individuales")

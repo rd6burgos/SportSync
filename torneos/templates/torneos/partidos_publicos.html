@@ -13,6 +13,81 @@
         <h1 class="mt-4 break-words text-3xl font-bold">{{ torneo.nombre }}</h1>
         <p class="mt-1 text-slate-600">Partidos y resultados · {{ torneo.get_estado_display }}</p>
 
+        <section class="mt-8">
+            <h2 class="text-2xl font-bold">Tabla de posiciones por equipos</h2>
+            <p class="mt-1 text-sm text-slate-600">
+                Ordenada por victorias, diferencia de goles y goles a favor. Los empates no suman victorias.
+            </p>
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full min-w-[640px] border-collapse text-left text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-600">
+                            <th class="p-3">#</th>
+                            <th class="p-3">Equipo</th>
+                            <th class="p-3">PJ</th>
+                            <th class="p-3">PG</th>
+                            <th class="p-3">PE</th>
+                            <th class="p-3">PP</th>
+                            <th class="p-3">GF</th>
+                            <th class="p-3">GC</th>
+                            <th class="p-3">DG</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in tabla_equipos %}
+                            <tr class="border-b border-slate-100">
+                                <td class="p-3 font-semibold">{{ forloop.counter }}</td>
+                                <th scope="row" class="p-3 font-semibold">{{ fila.equipo.nombre }}</th>
+                                <td class="p-3">{{ fila.jugados }}</td>
+                                <td class="p-3">{{ fila.ganados }}</td>
+                                <td class="p-3">{{ fila.empatados }}</td>
+                                <td class="p-3">{{ fila.perdidos }}</td>
+                                <td class="p-3">{{ fila.goles_favor }}</td>
+                                <td class="p-3">{{ fila.goles_contra }}</td>
+                                <td class="p-3">{{ fila.diferencia_goles }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="9" class="p-4 text-slate-600">Todavía no hay equipos registrados.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="mt-8">
+            <h2 class="text-2xl font-bold">Partidos entre equipos</h2>
+            {% for partido in partidos_equipos %}
+                <article class="mt-4 rounded-lg border border-slate-200 p-4">
+                    <p class="text-sm text-slate-600">
+                        {% if partido.ronda %}<strong>{{ partido.ronda }}</strong> · {% endif %}
+                        {{ partido.fecha_hora|date:"d/m/Y H:i" }}
+                    </p>
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+                        <p class="break-words text-lg font-semibold {% if partido.estado == 'cancelado' %}text-slate-400 line-through{% endif %}">
+                            {{ partido.equipo_a.nombre }}
+                            <span class="font-normal text-slate-500">vs</span>
+                            {{ partido.equipo_b.nombre }}
+                        </p>
+                        {% if partido.estado == "jugado" %}
+                            <p class="text-2xl font-bold">{{ partido.marcador_a }} - {{ partido.marcador_b }}</p>
+                        {% else %}
+                            <span class="rounded-full px-3 py-1 text-sm font-semibold {% if partido.estado == 'cancelado' %}bg-slate-200 text-slate-700{% else %}bg-amber-100 text-amber-800{% endif %}">
+                                {{ partido.get_estado_display }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="mt-3 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+                        <p><strong>{{ partido.equipo_a.nombre }}:</strong> {% for integrante in partido.equipo_a.integrantes.all %}{{ integrante.nombre_publico }}{% if not forloop.last %}, {% endif %}{% empty %}sin integrantes{% endfor %}</p>
+                        <p><strong>{{ partido.equipo_b.nombre }}:</strong> {% for integrante in partido.equipo_b.integrantes.all %}{{ integrante.nombre_publico }}{% if not forloop.last %}, {% endif %}{% empty %}sin integrantes{% endfor %}</p>
+                    </div>
+                </article>
+            {% empty %}
+                <p class="mt-4 rounded-lg bg-slate-100 p-5 text-slate-600">Todavía no hay partidos entre equipos.</p>
+            {% endfor %}
+        </section>
+
+        <section class="mt-8">
+            <h2 class="text-2xl font-bold">Partidos individuales</h2>
         {% for partido in partidos %}
             <article class="mt-4 rounded-lg border border-slate-200 p-4">
                 <p class="text-sm text-slate-600">
@@ -43,6 +118,7 @@
                 Todavía no hay partidos programados en este torneo.
             </p>
         {% endfor %}
+        </section>
     </div>
 </section>
 {% endblock %}

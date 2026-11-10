@@ -89,8 +89,29 @@ from .models import Usuario
 class FotoPerfilForm(forms.ModelForm):
     class Meta:
         model = Usuario
-        fields = ["foto_perfil"]
+        fields = ["first_name", "last_name", "foto_perfil"]
+        labels = {
+            "first_name": "Nombre",
+            "last_name": "Apellido",
+            "foto_perfil": "Foto de perfil",
+        }
         widgets = {
+            "first_name": forms.TextInput(attrs={
+                "autocomplete": "given-name",
+                "class": (
+                    "w-full rounded-lg border border-slate-300 bg-white "
+                    "px-4 py-3 text-slate-900 focus:outline-none "
+                    "focus:ring-2 focus:ring-cyan-600"
+                ),
+            }),
+            "last_name": forms.TextInput(attrs={
+                "autocomplete": "family-name",
+                "class": (
+                    "w-full rounded-lg border border-slate-300 bg-white "
+                    "px-4 py-3 text-slate-900 focus:outline-none "
+                    "focus:ring-2 focus:ring-cyan-600"
+                ),
+            }),
             "foto_perfil": forms.ClearableFileInput(attrs={
                 "accept": "image/*",
                 "class": "block w-full text-sm text-slate-700 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-100 file:px-4 file:py-2 file:font-semibold file:text-cyan-900 hover:file:bg-cyan-200",

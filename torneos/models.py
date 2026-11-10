@@ -2,6 +2,34 @@ from django.conf import settings
 from django.db import models
 
 
+class Equipo(models.Model):
+    """Equipo con integrantes fijos durante un torneo."""
+
+    torneo = models.ForeignKey(
+        "actividades.Actividad",
+        on_delete=models.PROTECT,
+        related_name="equipos",
+        limit_choices_to={"tipo": "torneo"},
+    )
+    nombre = models.CharField(max_length=80)
+    integrantes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="equipos_en_torneos",
+    )
+
+    class Meta:
+        ordering = ["nombre", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["torneo", "nombre"],
+                name="equipo_nombre_unico_torneo",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.nombre} · {self.torneo.nombre}"
+
+
 class Partido(models.Model):
     """Partido entre dos participantes de un torneo individual (CR-07)."""
 
@@ -89,3 +117,82 @@ class Partido(models.Model):
             return None
 
         return self.participante_a if self.marcador_a > self.marcador_b else self.participante_b
+
+
+class PartidoEquipo(models.Model):
+    """Partido entre dos equipos de un torneo."""
+
+    class Estado(models.TextChoices):
+        PROGRAMADO = "programado", "Programado"
+        JUGADO = "jugado", "Jugado"
+        CANCELADO = "cancelado", "Cancelado"
+
+    torneo = models.ForeignKey(
+        "actividades.Actividad",
+        on_delete=models.PROTECT,
+        related_name="partidos_equipos",
+        limit_choices_to={"tipo": "torneo"},
+    )
+    equipo_a = models.ForeignKey(
+        Equipo,
+        on_delete=models.PROTECT,
+        related_name="partidos_como_a",
+    )
+    equipo_b = models.ForeignKey(
+        Equipo,
+        on_delete=models.PROTECT,
+        related_name="partidos_como_b",
+    )
+    ronda = models.CharField(max_length=50, blank=True)
+    fecha_hora = models.DateTimeField("fecha y hora")
+    estado = models.CharField(
+        max_length=15,
+        choices=Estado.choices,
+        default=Estado.PROGRAMADO,
+    )
+    marcador_a = models.PositiveSmallIntegerField(null=True, blank=True)
+    marcador_b = models.PositiveSmallIntegerField(null=True, blank=True)
+    resultado_registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="resultados_equipos_registrados",
+    )
+    fecha_resultado = models.DateTimeField(null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["fecha_hora", "pk"]
+        verbose_name = "partido entre equipos"
+        verbose_name_plural = "partidos entre equipos"
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(equipo_a=models.F("equipo_b")),
+                name="partido_equipos_distintos",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(marcador_a__isnull=True, marcador_b__isnull=True)
+                    | models.Q(marcador_a__isnull=False, marcador_b__isnull=False)
+                ),
+                name="part_eq_marcadores_completos",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(estado="jugado")
+                    | models.Q(marcador_a__isnull=False)
+                ),
+                name="part_eq_jugado_marcador",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.equipo_a} vs {self.equipo_b} · {self.torneo}"
+
+    @property
+    def ganador(self):
+        if self.estado != self.Estado.JUGADO or self.marcador_a == self.marcador_b:
+            return None
+
+        return self.equipo_a if self.marcador_a > self.marcador_b else self.equipo_b
