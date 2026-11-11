@@ -278,6 +278,26 @@ class Notificacion(models.Model):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
 
 class Asistencia(models.Model):

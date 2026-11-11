@@ -241,6 +241,12 @@ def cancelar_inscripcion(request, inscripcion_id):
 
 
 
+
+
+
+
+
+
 # --- Etapa 15: escaneo y validación de QR (CR-09) ---------------------------
 
 def _inscripciones_escaneables(actividad):
@@ -294,6 +300,33 @@ def escanear_qr(request, actividad_id):
             **_resumen_asistencia(actividad),
         },
     )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @login_required
